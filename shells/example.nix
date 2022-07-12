@@ -1,4 +1,7 @@
 pkgs:
+
+### Example shell that can be used as a template for shell creation
+
 let
   # Name of the shell
   name = "ShixExample";
