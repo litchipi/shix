@@ -51,6 +51,7 @@ in with colorstool; rec {
     name, colors ? [],
     tmux_vars_overwrite ? {},
     tmux_theme_overwrite ? vars: {},
+    tmux_configs_files ? [],
   }: let 
     
     get_palette = builtins.elemAt colors;
@@ -144,9 +145,8 @@ in with colorstool; rec {
   in pkgs.concatTextFile {
     name = "tmux_${name}.conf";
     files = [
-      ../configs/tmux.conf
       tmux_theme_file
-    ];
+    ] ++ tmux_configs_files;
   };
 
   # Generate a tmux session isolated from the global system one, with the custom configuration
