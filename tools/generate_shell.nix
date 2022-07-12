@@ -63,6 +63,7 @@ in {
       cat $HOME/.bashrc ${custom_bashrc} > ${new_home}/.profile
 
       export SHELL="${shellbin}"
+      export OLDHOME="$HOME"
       export HOME="${new_home}"
 
       # Remove any external source if they cannot be reached from inside the HOME
