@@ -1,7 +1,4 @@
 pkgs:
-
-### Example shell that can be used as a template for shell creation
-
 let
   # Name of the shell
   name = "ShixExample";
@@ -9,6 +6,7 @@ let
   # Some utilities we will use 
   colorstool = import ../tools/colors.nix pkgs;
   tmuxtool = import ../tools/tmux.nix pkgs;
+  ps1tool = import ../tools/ps1.nix pkgs;
 
   # The color palette that will be used for later configs
   colors = [
@@ -85,11 +83,10 @@ in {
   };
 
   # The custom PS1 to be used
-  ps1 = with colorstool; builtins.concatStringsSep " " [
-    "\\[${style.bold}${ansi (get_col 0)}\\] ${name}"
-    "\\[${style.italic}${ansi (get_col 1)}\\]\\w"
-    "\\[${style.bold}${ansi (get_col 3)}\\] :-) "
-    "\\[${reset}\\]"
+  ps1 = with colorstool; ps1tool.mkPs1 [
+    { style=style.bold; color=get_col 0; text="${name} "; }
+    { style=style.italic; color=get_col 1; text="\\w"; }
+    { style=style.bold; color=get_col 3; text=":-)"; }
   ];
 
   # Some code to execute each time a new shell is created (in tmux for example)
@@ -130,7 +127,7 @@ in {
   # Create symlinks by linking every directory inside the source in the destination
   symLinks.dirs_inside = {
     # Destination   Source
-    "other/" = "$HOME";
+    "other/var" = "/var/";
   };
 
   # Add packages to the shell
