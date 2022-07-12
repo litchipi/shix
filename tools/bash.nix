@@ -1,6 +1,8 @@
 pkgs: let
   lib = pkgs.lib;
 
+  ps1tool = import ./ps1.nix pkgs;
+
   base_scripts = name: {
     add_pkgs = ''
       if [ $# -ne 1 ]; then
@@ -53,6 +55,7 @@ in rec {
       ${noautocomplet}
 
       ${extra_path}
+      ${ps1tool.import_git_ps1}
       export PS1="${ps1}"
       cd $HOME
     '') + "\n" + bashInitExtra;

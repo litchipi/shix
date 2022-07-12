@@ -84,8 +84,9 @@ in {
 
   # The custom PS1 to be used
   ps1 = with colorstool; ps1tool.mkPs1 [
-    { style=style.bold; color=get_col 0; text="${name} "; }
+    { style=style.bold; color=get_col 0; text="${name}"; }
     { style=style.italic; color=get_col 1; text="\\w"; }
+    (ps1tool.mkGitPs1 { style=style.italic; color = get_col 2; left = "*"; right = "*"; })
     { style=style.bold; color=get_col 3; text=":-)"; }
   ];
 
