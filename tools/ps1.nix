@@ -6,7 +6,10 @@ pkgs: let
     color ? null,
     text ? "",
     ...
-  }: "\\[${style}${ansi color}\\]${text}";
+  }: "\\["
+  + (if builtins.isNull style then "" else style)
+  + (if builtins.isNull color then "" else ansi color)
+  + "\\]${text}";
 in {
   mkPs1 = defs: (builtins.foldl' (acc: {nosep ? false, ...}@el:
     acc + (create_ps1_element el) + (if nosep then "" else " ")
