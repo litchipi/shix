@@ -3,16 +3,19 @@ pkgs: let
 
   ps1tool = import ./ps1.nix pkgs;
 
-  base_scripts = name: {
+  base_scripts = name: let
+    name_sanitized = builtins.replaceStrings [" " "/" ] ["_" "_"] name;
+    fname = "/tmp/${name_sanitized}_shell_addpkgs";
+  in {
     add_pkgs = ''
       if [ $# -ne 1 ]; then
         echo "add_pkgs: <package name>"
       else
         package=$1
 
-        touch /tmp/${name}_shell_addpkgs
-        if ! cat /tmp/${name}_shell_addpkgs | grep "$package" 1>/dev/null 2>/dev/null; then
-          echo "$package" >> /tmp/${name}_shell_addpkgs
+        touch ${fname}
+        if ! cat ${fname} | grep "$package" 1>/dev/null 2>/dev/null; then
+          echo "$package" >> ${fname}
         fi
 
         nix build nixpkgs/22.05#$package
