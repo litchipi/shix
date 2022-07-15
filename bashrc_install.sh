@@ -50,8 +50,14 @@ if ! grep "shixedit()" ~/.bashrc 2>/dev/null 1>/dev/null; then
         pushd \$HOME/.shix/
         FNAME=\$HOME/.shix/shells/\$NAME.nix
         if [ ! -f \$FNAME ]; then
-            cp \$HOME/.shix/shells/example.nix \$FNAME
-            sed -i \"s/ShixExample/\$NAME/g\" \$FNAME
+            read -p \"Do you wish to create a new shix \\\"\$NAME\\\" ? [y/N] \" -r
+            echo
+            if [[ \$REPLY =~ ^[Yy]$ ]]; then
+                cp \$HOME/.shix/shells/example.nix \$FNAME
+                sed -i \"s/ShixExample/\$NAME/g\" \$FNAME
+            else
+                exit 0;
+            fi
         fi
 
         $EDITOR \$FNAME
