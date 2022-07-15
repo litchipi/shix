@@ -12,7 +12,7 @@ in {
     homeLinks ? [ ".config" ".cache" ],
     new_home ? "/tmp/${name}_home",
     clean_before ? false,
-    data_dir ? "$HOME/.nix_shells_data/${name}",
+    data_dir ? null,
   ...}@cfg:
   let 
     custom_bashrc = bashtool.mkBashrc cfg;
@@ -41,16 +41,25 @@ in {
 
     shell = pkgs.writeScript "${name}_shell_activate" (''
       set -e
+    ''
 
-    '' + (if clean_before then ''
+    # If want a clean workspace before starting, remove everything
+    + (if clean_before then ''
       rm -rf ${new_home}
     '' else "")
     + ''
-      mkdir -p ${new_home} ${data_dir}
+      mkdir -p ${new_home}
+      rm -f ${new_home}/data ${new_home}/${builtins.concatStringsSep " ${new_home}/" homeLinks}
+    ''
 
-      rm -f ${new_home}/data ${new_home}/.config ${new_home}/.cache
+    # Link data_dir in the home directory
+    + (if (builtins.isNull data_dir) then "" else ''
+      mkdir -p ${data_dir}
       ln -s ${data_dir} ${new_home}/data
-    '' + (builtins.concatStringsSep "\n" (builtins.map (path:
+    '')
+
+    # Link dotfiles inside home directory
+    + (builtins.concatStringsSep "\n" (builtins.map (path:
       "ln -s $HOME/${path} ${new_home}/${path}"
     ) homeLinks)) + ''
 
