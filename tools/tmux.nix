@@ -151,4 +151,5 @@ in with colorstool; rec {
 
   # Generate a tmux session isolated from the global system one, with the custom configuration
   generate_command = { name, tmux_config }: "tmux -L \"${name}\" -f \"${tmux_config}\"";
+  quit_command = name: "tmux -L \"${name}\" kill-server";
 }

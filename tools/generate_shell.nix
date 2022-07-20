@@ -7,14 +7,20 @@ in {
     shellbin ? "${pkgs.bashInteractive}/bin/bash",
     initScript ? "",
     exitScript ? "",
+    spawnTmux ? false,
     shellCommand ? shellbin,
     symLinks ? {},
     homeLinks ? [ ".config" ".cache" ],
     new_home ? "/tmp/${name}_home",
     clean_before ? false,
     data_dir ? null,
+    tmux_config ? null,
   ...}@cfg:
-  let 
+  let
+    shell_exec = if spawnTmux
+      then tmuxtool.generate_command name tmux_config
+      else shellCommand;
+
     custom_bashrc = bashtool.mkBashrc cfg;
     links_all = { direct = {}; dirs_inside = {}; } // symLinks;
 
@@ -39,7 +45,7 @@ in {
     ''
     ) links_all.dirs_inside);
 
-    shell = pkgs.writeScript "${name}_shell_activate" (''
+    shell = pkgs.writeScript "${name}_shell_activate.sh" (''
       set -e
     ''
 
@@ -97,7 +103,12 @@ in {
 
       ${initScript}
 
-    '' + shellCommand + ''
+    '' + (if spawnTmux then ''
+      function quit() {
+        ${tmuxtool.quit_command name}
+      }
+
+    '' else "") + shell_exec + ''
 
       ${exitScript}
       exit 0;

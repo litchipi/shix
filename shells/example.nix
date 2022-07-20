@@ -22,7 +22,77 @@ let
   ];
   get_col = builtins.elemAt colors;
 
-  # Create the tmux configuration from this:
+in {
+  inherit name;
+
+  # Where to place the directories for
+  new_home = "/tmp/my_new_temporary_home";    # The home directory (can be temporary)
+  data_dir = "/tmp/some_persistent_storage";  # The data directory (should be persistent)
+
+  # Create symlinks by directly linking the source to the destination
+  symLinks.direct = {
+    # Destination   Source
+    "other/tmp" = "/tmp/";
+
+    awesome_nix = pkgs.fetchFromGitHub {
+      owner = "nix-community";
+      repo = "awesome-nix";
+      rev = "5e09d94eba14282976bcb343a9392fe54d7a310c";
+      sha256 = "sha256-y3CgwyC0A7X6SZRu8hogOrvcfYlwa+M9OuViYa/zRas=";
+    };
+  };
+
+  # Create symlinks by linking every directory inside the source in the destination
+  symLinks.dirs_inside = {
+    # Destination   Source
+    "other/var" = "/var/";
+  };
+
+  # Add packages to the shell
+  packages = with pkgs; [
+    neo-cowsay
+  ];
+
+  # Custom aliases / scripts that are set for this shell
+  scripts = with colorstool; {
+    cow = "cowsay \"$@\"";
+  
+    readnotes = ''
+      touch $HOME/data/notes
+      tail +1f $HOME/data/notes
+    '';
+
+    note = ''
+      echo -e "$@\n" >> $HOME/data/notes
+      echo -e "${style.bold}${ansi (get_col 0)}Saved${reset}"
+    '';
+  };
+
+  # The custom PS1 to be used
+  ps1 = with colorstool; ps1tool.mkPs1 [
+    { style=style.bold; color=get_col 0; text="${name}"; }
+    { style=style.italic; color=get_col 1; text="\\w"; }
+    (ps1tool.mkGitPs1 { style=style.italic; color = get_col 2; left = "*"; right = "*"; })
+    { style=style.bold; color=get_col 3; text=":-)"; }
+  ];
+
+  # Some code to execute each time a new shell is created (in tmux for example)
+  bashInitExtra = ''
+    cow "Welcome !"
+  '';
+
+  # Some code executed each time we fire up the shell environment
+  initScript = ''
+    touch $HOME/somefile
+  '';
+
+  # Some code we execute before quitting the shell environment
+  exitScript = ''
+    rm -f $HOME/somefile
+  '';
+
+  # Spawning a custom tmux when creating the shell
+  spawnTmux = true;
   tmux_config = tmuxtool.generate_config {
     inherit colors name;
 
@@ -64,75 +134,4 @@ let
       };
     };
   };
-in {
-  inherit name;
-
-  # Custom aliases / scripts that are set for this shell
-  scripts = with colorstool; {
-    cow = "cowsay \"$@\"";
-  
-    readnotes = ''
-      touch $HOME/data/notes
-      tail +1f $HOME/data/notes
-    '';
-
-    note = ''
-      echo -e "$@\n" >> $HOME/data/notes
-      echo -e "${style.bold}${ansi (get_col 0)}Saved${reset}"
-    '';
-  };
-
-  # The custom PS1 to be used
-  ps1 = with colorstool; ps1tool.mkPs1 [
-    { style=style.bold; color=get_col 0; text="${name}"; }
-    { style=style.italic; color=get_col 1; text="\\w"; }
-    (ps1tool.mkGitPs1 { style=style.italic; color = get_col 2; left = "*"; right = "*"; })
-    { style=style.bold; color=get_col 3; text=":-)"; }
-  ];
-
-  # Some code to execute each time a new shell is created (in tmux for example)
-  bashInitExtra = ''
-    cow "Welcome !"
-  '';
-
-  # Some code executed each time we fire up the shell environment
-  initScript = ''
-    touch $HOME/somefile
-  '';
-
-  # Some code we execute before quitting the shell environment
-  exitScript = ''
-    rm -f $HOME/somefile
-  '';
-
-  # The code that will be executed when starting the shell
-  shellCommand = tmuxtool.generate_command { inherit name tmux_config;};
-
-  # Where to place the directories for
-  new_home = "/tmp/my_new_temporary_home";    # The home directory (can be temporary)
-  data_dir = "/tmp/some_persistent_storage";  # The data directory (should be persistent)
-
-  # Create symlinks by directly linking the source to the destination
-  symLinks.direct = {
-    # Destination   Source
-    "other/tmp" = "/tmp/";
-
-    awesome_nix = pkgs.fetchFromGitHub {
-      owner = "nix-community";
-      repo = "awesome-nix";
-      rev = "5e09d94eba14282976bcb343a9392fe54d7a310c";
-      sha256 = "sha256-y3CgwyC0A7X6SZRu8hogOrvcfYlwa+M9OuViYa/zRas=";
-    };
-  };
-
-  # Create symlinks by linking every directory inside the source in the destination
-  symLinks.dirs_inside = {
-    # Destination   Source
-    "other/var" = "/var/";
-  };
-
-  # Add packages to the shell
-  packages = with pkgs; [
-    neo-cowsay
-  ];
 }
