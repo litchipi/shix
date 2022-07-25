@@ -61,34 +61,31 @@ in with colorstool; rec {
       theme) + "\n";
 
     tmux_vars = {
-      status = {
+      status = rec {
         interval = "10";
         justify = "centre";
-      };
-      status.left = {
-        length = "40";
-        left = "#H";
-        mid = "#(whoami)";
-        right = "#S";
-        # TODO    Simplify, use struct
-        colors = [  # bg fg
-          colors.primary (colorstool.text_contrast colors.primary)
-          colors.secondary (colorstool.text_contrast colors.secondary)
-          #(basic.gray 40) colors.highlight
-          colors.tertiary (colorstool.text_contrast colors.tertiary)
-        ];
-      };
-      status.right = {
-        length = "150";
-        right = "%D";
-        mid = "%H:%M";
-        left = "${statusbar.connected} ${statusbar.disk_usage}";
-        # TODO    By default, reverse the status.left list
-        colors = [ # bg fg
-          (basic.gray 40) colors.highlight
-          colors.secondary (colorstool.text_contrast colors.secondary)
-          colors.primary (colorstool.text_contrast colors.primary)
-        ];
+        left = {
+          length = "40";
+          left = "#H";
+          mid = "#(whoami)";
+          right = "#S";
+          colors = {
+            left = { bg=colors.primary; fg=colorstool.text_contrast colors.primary; };
+            mid = { bg=colors.secondary; fg=colorstool.text_contrast colors.secondary; };
+            right = { bg = basic.gray 40; fg = colors.highlight; };
+          };
+        };
+        right = {
+          length = "150";
+          right = "%D";
+          mid = "%H:%M";
+          left = "${statusbar.connected} ${statusbar.disk_usage}";
+          colors = {
+            left = left.colors.right;
+            mid = left.colors.mid;
+            right = left.colors.left;
+          };
+        };
       };
     };
 
@@ -104,14 +101,14 @@ in with colorstool; rec {
 
       "status-style" = tmuxstyle { bg = "default"; };
       "status-left" = with vars.status; sidebar { char = ""; left = true;} [
-        { bg = get_col left.colors 0; fg = get_col left.colors 1; txt = left.left; add="bold";}
-        { bg = get_col left.colors 2; fg = get_col left.colors 3; txt = left.mid;}
-        { bg = get_col left.colors 4; fg = get_col left.colors 5; txt = left.right; add="nobold";}
+        { inherit (left.colors.left) bg fg; txt = left.left; add="bold";}
+        { inherit (left.colors.mid) bg fg; txt = left.mid;}
+        { inherit (left.colors.right) bg fg; txt = left.right; add="nobold";}
       ];
       "status-right" = with vars.status; sidebar {char = ""; left=false;} [
-        { bg = get_col right.colors 0; fg = get_col right.colors 1; txt = right.left; add="nobold";}
-        { bg = get_col right.colors 2; fg = get_col right.colors 3; txt = right.mid; add="bold";}
-        { bg = get_col right.colors 4; fg = get_col right.colors 5; txt = right.right; }
+        { inherit (right.colors.left) bg fg; txt = right.left; add="nobold";}
+        { inherit (right.colors.mid) bg fg; txt = right.mid; add="bold";}
+        { inherit (right.colors.right) bg fg; txt = right.right; }
       ];
 
       "status-interval" = vars.status.interval;
