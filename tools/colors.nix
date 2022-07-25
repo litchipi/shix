@@ -25,4 +25,11 @@ in rec {
     striked = reset + escape_code + "9m";
     double_underline = reset + escape_code + "21m";
   };
+
+  text_contrast = {r, g, b, ...}: let
+    redlum = builtins.div (r*1000) 1944;
+    greenlum = builtins.div (g*1000) 1504;
+    bluelum = builtins.div (b*1000) 11000;
+    luminance = redlum + greenlum + bluelum;
+  in if (builtins.trace luminance luminance) > 115 then basic.black else basic.white;
 }

@@ -48,14 +48,12 @@ in with colorstool; rec {
       res.acc + (if left then sepchar "default" last.bg else "");
 
   generate_config = {
-    name, colors ? [],
+    name,
     tmux_vars_overwrite ? {},
     tmux_theme_overwrite ? vars: {},
     tmux_configs_files ? [],
-  }: let 
-    
-    get_palette = builtins.elemAt colors;
-
+    tmux_config_extra ? "",
+  }: colors: let 
     generate_theme = theme: builtins.concatStringsSep "\n" (
       lib.attrsets.mapAttrsToList (name: cnt:
       "set -g ${name} \"${builtins.toString cnt}\""
@@ -72,10 +70,12 @@ in with colorstool; rec {
         left = "#H";
         mid = "#(whoami)";
         right = "#S";
-        colors = [
-          (get_palette 0) basic.white
-          (get_palette 2) (get_palette 5)
-          (basic.gray 40) (get_palette 4)
+        # TODO    Simplify, use struct
+        colors = [  # bg fg
+          colors.primary (colorstool.text_contrast colors.primary)
+          colors.secondary (colorstool.text_contrast colors.secondary)
+          #(basic.gray 40) colors.highlight
+          colors.tertiary (colorstool.text_contrast colors.tertiary)
         ];
       };
       status.right = {
@@ -83,22 +83,24 @@ in with colorstool; rec {
         right = "%D";
         mid = "%H:%M";
         left = "${statusbar.connected} ${statusbar.disk_usage}";
-        colors = [
-          (basic.gray 40) (get_palette 4)
-          (get_palette 2) (get_palette 5)
-          (get_palette 0) basic.white
+        # TODO    By default, reverse the status.left list
+        colors = [ # bg fg
+          (basic.gray 40) colors.highlight
+          colors.secondary (colorstool.text_contrast colors.secondary)
+          colors.primary (colorstool.text_contrast colors.primary)
         ];
       };
     };
-    
+
+    # TODO  Place a lot of contrast-induced text colors here
     tmux_theme = vars: let
       get_col = col: builtins.elemAt col;
     in {
-      "pane-border-style" = tmuxstyle { fg = get_palette 3; bg = "default"; };
-      "pane-active-border-style" = tmuxstyle { fg = get_palette 0; bg = "default"; add = "bold";};
-      "message-style" = tmuxstyle { fg = get_palette 1; };
+      "pane-border-style" = tmuxstyle { fg = colors.inactive; bg = "default"; };
+      "pane-active-border-style" = tmuxstyle { fg = colors.active; bg = "default"; add = "bold";};
+      "message-style" = tmuxstyle { fg = colors.highlight; };
 
-      "mode-style" = tmuxstyle { bg = get_palette 2; fg = basic.black; };
+      "mode-style" = tmuxstyle { bg = colors.secondary; fg = basic.black; };
 
       "status-style" = tmuxstyle { bg = "default"; };
       "status-left" = with vars.status; sidebar { char = ""; left = true;} [
@@ -118,7 +120,7 @@ in with colorstool; rec {
       "status-right-length" = vars.status.right.length;
 
       "window-status-current-format" = tmuxfmts [
-        { txt = " "; bg="default"; fg = get_palette 0; add="nobold,noitalics"; }
+        { txt = " "; bg="default"; fg = colors.active; add="nobold,noitalics"; }
         { txt = "#W"; add = "bold"; }
         { txt = " "; add="nobold"; }
       ];
@@ -129,23 +131,34 @@ in with colorstool; rec {
 
       "window-status-style" = tmuxstyle {
         bg="default";
-        fg = get_palette 7;
+        fg = colors.inactive;
         add="nobold,italics";
       };
-      "window-status-activity-style" = tmuxstyle { fg = get_palette 2; add = "bold,noitalics"; };
-      "window-status-bell-style" = tmuxstyle { fg = get_palette 2; add = "reverse,bold,noitalics"; };
+      "window-status-activity-style" = tmuxstyle { fg = colors.highlight; add = "bold,noitalics"; };
+      "window-status-bell-style" = tmuxstyle { fg = colors.highlight; add = "reverse,bold,noitalics"; };
     };
 
     tmux_theme_file = let
       vars = lib.attrsets.recursiveUpdate tmux_vars tmux_vars_overwrite;
     in pkgs.writeTextFile {
       name = "tmux_${name}_theme.conf";
-      text = generate_theme (lib.attrsets.recursiveUpdate (tmux_theme vars) (tmux_theme_overwrite vars));
+      text = generate_theme
+        (lib.attrsets.recursiveUpdate (tmux_theme vars) (tmux_theme_overwrite vars));
+    };
+    tmux_other_configs = pkgs.writeTextFile {
+      name = "tmux_${name}_configs.conf";
+      text = ''
+        set -g default-terminal "tmux-256color"
+        set -ga terminal-overrides ",*256col*:Tc"
+        set -g @plugin 'nhdaly/tmux-better-mouse-mode'
+
+      '' + tmux_config_extra;
     };
   in pkgs.concatTextFile {
     name = "tmux_${name}.conf";
     files = [
       tmux_theme_file
+      tmux_other_configs
     ] ++ tmux_configs_files;
   };
 

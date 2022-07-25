@@ -1,6 +1,18 @@
 pkgs: let
   bashtool = import ../tools/bash.nix pkgs;
+  tmuxtool = import ../tools/tmux.nix pkgs;
   lib = pkgs.lib;
+
+  # TODO  Allow to bypass any theme generation
+  default_colors = {
+    primary = {r=255; g=0; b=0;};
+    secondary = {r=255; g=255; b=0;};
+    tertiary = {r=0; g=255; b=0;};
+    highlight = {r=0; g=255; b=255;};
+    active = {r=0; g=0; b=255;};
+    inactive = {r=128; g=0; b=0;};
+  };
+
 in {
   mkShell = {
     name,
@@ -15,10 +27,12 @@ in {
     clean_before ? false,
     data_dir ? null,
     tmux_config ? null,
+    colors ? default_colors,
   ...}@cfg:
   let
+    tmux_config_gen = tmuxtool.generate_config cfg.tmux_config colors;
     shell_exec = if spawnTmux
-      then tmuxtool.generate_command name tmux_config
+      then tmuxtool.generate_command { inherit name; tmux_config = tmux_config_gen; }
       else shellCommand;
 
     custom_bashrc = bashtool.mkBashrc cfg;
@@ -104,7 +118,7 @@ in {
       ${initScript}
 
     '' + (if spawnTmux then ''
-      function quit() {
+      quit() {
         ${tmuxtool.quit_command name}
       }
 
