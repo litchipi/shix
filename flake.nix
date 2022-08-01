@@ -43,62 +43,9 @@
   in {
     apps = builtins.listToAttrs (builtins.map genShell (find_all_files ./shells));
     nixosModules.default = let 
-      shixsrc = ./.;
-      shixbin = pkgs.writeShellScriptBin "shix" ''
-        set -e
-
-        if [ ! -z ''${SHIX_SHELL+x} ]; then
-            echo 'Already in a shix shell, cannot nest them'
-            return
-        fi
-        export SHIX_SHELL=1
-        
-        if [ ! -d $HOME/.shix/.git ]; then
-          git clone ${shixsrc} $HOME/.shix
-        fi
-        
-        nix run $HOME/.shix#$1
-      '';
-
-      shixeditbin = pkgs.writeShellScriptBin "shixedit" ''
-        set -e
-
-        if [ -z "$EDITOR" ]; then
-            EDITOR="vim"
-        fi
-  
-        if [ ! -d $HOME/.shix/.git ]; then
-          git clone ${shixsrc} $HOME/.shix
-        fi
-
-        NAME="$1"
-        if [ ! -z ''${SHIX_SHELL+x} ]; then
-            echo 'You are in a shix shell, cannot edit a shell inside it'
-            exit 1;
-        fi
-
-        if [ -z "$NAME" ]; then
-            echo "Usage:"
-            echo "\tshixedit <name>"
-            exit 1;
-        fi
-
-        pushd $HOME/.shix/
-        FNAME=$HOME/.shix/shells/$NAME.nix
-        if [ ! -f $FNAME ]; then
-            cp $HOME/.shix/shells/example.nix $FNAME
-            sed -i "s/ShixExample/$NAME/g" $FNAME
-        fi
-
-        $EDITOR $FNAME
-        git add .
-        git commit -m "Edited $NAME shell"
-        popd
-      '';
+      shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./.shix.sh);
     in {
-      config.environment.systemPackages = [
-        shixbin shixeditbin
-      ];
+      config.environment.systemPackages = [ shixbin git ];
     };
   });
 }
