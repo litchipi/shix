@@ -39,9 +39,9 @@ in {
     }) { ok = true; list = []; }
     (lib.attrsets.mapAttrsToList (name: value: {inherit name value; }) (builtins.deepSeq checklist checklist));
 
-    shellconf = bashtool.default_shell_config // shell;
-    tmuxconf = tmuxtool.default_tmux_config // tmux;
-    dirsconf = (default_dirs_config name) // dirs;
+    shellconf = lib.attrsets.recursiveUpdate bashtool.default_shell_config shell;
+    tmuxconf = lib.attrsets.recursiveUpdate tmuxtool.default_tmux_config tmux;
+    dirsconf = lib.attrsets.recursiveUpdate (default_dirs_config name) dirs;
     cfg = (cfg_raw // { shell = shellconf; tmux = tmuxconf; dirs = dirsconf; });
     shellCommand = if (builtins.isNull shellCommand) then shell.bin else shellCommand;
 
