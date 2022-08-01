@@ -1,6 +1,15 @@
 pkgs: let
   lib = pkgs.lib;
 in rec {
+  default_colors = {
+    primary = {r=255; g=0; b=0;};
+    secondary = {r=255; g=255; b=0;};
+    tertiary = {r=0; g=255; b=0;};
+    highlight = {r=0; g=255; b=255;};
+    active = {r=0; g=0; b=255;};
+    inactive = {r=128; g=0; b=0;};
+  };
+
   tohex = {r, g, b, ...}: let
     f = x: lib.strings.toLower (lib.strings.fixedWidthString 2 "0" (lib.trivial.toHexString x));
   in
@@ -25,4 +34,11 @@ in rec {
     striked = reset + escape_code + "9m";
     double_underline = reset + escape_code + "21m";
   };
+
+  text_contrast = {r, g, b, ...}: let
+    redlum = builtins.div (r*1000) 1944;
+    greenlum = builtins.div (g*1000) 1504;
+    bluelum = builtins.div (b*1000) 11000;
+    luminance = redlum + greenlum + bluelum;
+  in if luminance > 115 then basic.black else basic.white;
 }

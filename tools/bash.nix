@@ -28,15 +28,16 @@ pkgs: let
   };
 
 in rec {
-  mkBashrc = {
-    name,
-    shellCommand ? null,
-    scripts ? {},
-    noautocompletion ? [],
-    bashInitExtra ? "",
-    ps1 ? null,
-    packages ? [],
-  ...}: let 
+  default_shell_config = {
+    bin = "${pkgs.bashInteractive}/bin/bash";
+    config_file = "$HOME/.bashrc";
+    ps1 = null;
+    scripts = {};
+    bashInitExtra = "";
+    packages = [];
+  };
+
+  mkBashrc = { name, packages, shell, ...}: with shell; let
     all_scripts = builtins.concatStringsSep "\n\n" (
       pkgs.lib.attrsets.mapAttrsToList generate_script (scripts // (base_scripts name))
     );
@@ -45,23 +46,16 @@ in rec {
       "export PATH=$PATH:" + (lib.strings.makeBinPath packages)
     else "";
 
-    # TODO  Add custom auto-completion for specific scripts
-    noautocomplet = builtins.concatStringsSep "\n" (builtins.map (p:
-      "" # TODO FIXME   Remove totally auto-completion for some commands
-      #"complete -r ${p}"
-    ) noautocompletion);
-
   in pkgs.writeTextFile {
     name = "custom_${name}_bashrc";
     text = ''
     '' + all_scripts + "\n" + (if builtins.isNull ps1 then "" else ''
-      ${noautocomplet}
-
-      ${extra_path}
       ${ps1tool.import_git_ps1}
       export PS1="${ps1}"
+    '') + ''
+      ${extra_path}
       cd $HOME
-    '') + "\n" + bashInitExtra;
+    '' + "\n" + bashInitExtra;
   };
 
   generate_script = name: text: ''
