@@ -24,6 +24,10 @@ in with colorstool; rec {
     connected = "#(if ping -c 1 1.1.1.1 2>/dev/null 1>/dev/null; then echo ''; else echo ''; fi)";
     int_ip= "#(ip -4 -o a|awk '$2!=\"lo\"{print $4}'|cut -d '/' -f 1)";
     iface = "#(ip -4 -o a|awk '$2!=\"lo\"{print $2}')";
+    dir_totsize = dirpath: "#(du -hs ${dirpath} 2>/dev/null|awk '{print $1}')";
+    mem_usage = opts: key: let
+      cmd = "free ${opts}|grep \"${key}\"";
+    in "#(${cmd}|awk '{print $3}')/#(${cmd}|awk '{print $2}')";
   };
 
   sidebar = {char, left}: content_list: let
