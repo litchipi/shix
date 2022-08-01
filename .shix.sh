@@ -176,6 +176,11 @@ case $1 in
         check_not_in_shell
         shixremote $@
         ;;
+    "init")
+        shift 1;
+        check_deps
+        check_init
+        ;;
     *)
         check_deps
         check_not_in_shell
