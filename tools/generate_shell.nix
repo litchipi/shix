@@ -27,16 +27,17 @@ in {
   let
     checklist = {
       name_is_safe_string = (lib.strings.escapeShellArg name) == ("'" + name + "'");
+      name_without_whitespace = ! lib.strings.hasInfix " " name;
     };
 
     configcheck = builtins.foldl' (state: check: {
       ok = state.ok && check.value;
       list = state.list ++ (if check.value
         then []
-        else lib.debug.traceSeq "${check.name} check failed" [check.name]
+        else [check.name]
       );
     }) { ok = true; list = []; }
-    (lib.attrsets.mapAttrsToList (name: value: {inherit name value; }) (builtins.seq checklist checklist));
+    (lib.attrsets.mapAttrsToList (name: value: {inherit name value; }) (builtins.deepSeq checklist checklist));
 
     shellconf = bashtool.default_shell_config // shell;
     tmuxconf = tmuxtool.default_tmux_config // tmux;
@@ -149,7 +150,7 @@ in {
   in {
     type = if (builtins.deepSeq configcheck configcheck.ok)
       then "app"
-      else builtins.throw "Error while checking the configuration";
+      else builtins.throw "Failed checks: ${builtins.concatStringsSep ", " configcheck.list}";
     program = pkgs.lib.debug.traceValSeq "${shell_activate}";
   };
 }

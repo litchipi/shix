@@ -25,7 +25,9 @@
 
     genShell = f: {
       name = name_from_fname f;
-      value = shelltool.mkShell (import f pkgs);
+      value = let
+        act = shelltool.mkShell (import f pkgs);
+      in builtins.deepSeq act act;
     };
 
     find_all_files = dir: lib.lists.flatten (
