@@ -45,7 +45,7 @@
     nixosModules.default = let 
       shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./.shix.sh);
     in {
-      config.environment.systemPackages = [ shixbin git ];
+      config.environment.systemPackages = [ shixbin pkgs.git ];
     };
   });
 }

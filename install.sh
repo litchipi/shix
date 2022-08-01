@@ -3,4 +3,5 @@
 # Installs the `shix` script
 
 mkdir -p ~/.local/bin/
-cp ./.shix.sh ~/.local/bin/shix
+echo "#!/bin/bash" > ~/.local/bin/shix
+cat ./.shix.sh >> ~/.local/bin/shix

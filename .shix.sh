@@ -33,35 +33,33 @@ check_init() {
         echo "Shix is not initialized on your system, setting it up ..."
         read -p "Do you wish to import an existing remote repository ? [Y/n]" answer
         case $answer in
-            "y"|"Y"|"yes")
+            "n"|"N"|"no")
+                echo "Setting up a blank repository"
+                git clone "$SHIX_SRC" $SHIXDIR
+                pushd $SHIXDIR
+                git checkout -f --track origin/main || git reset --hard origin/main
+                ;;
+            *)
                 read -p "Enter the URL: " remote
                 git clone "$remote" $SHIXDIR
                 pushd $SHIXDIR
+                git checkout -f --track origin/main || git reset --hard origin/main
                 add_shixremote "$remote"
-                popd
-                ;;
-            *)
-                echo "Setting up a blank repository"
-                git clone "$SHIX_SRC" $SHIXDIR
                 ;;
         esac
+        if ! git remote|grep "$GITSHIXREMOTENAME" 1>/dev/null 2>/dev/null; then
+            echo "Do you wish to save your shix shells in a remote repository ? [Y/n]"
+            read answer
+            case $answer in
+                "y"|"Y"|"yes")
+                    ;;
+                *)
+                    add_shixremote
+                    ;;
+            esac
+        fi
+        popd
     fi
-
-    pushd $SHIXDIR
-
-    if ! git remote|grep "$GITSHIXREMOTENAME" 1>/dev/null 2>/dev/null; then
-        echo "Do you wish to save your shix shells in a remote repository ? [Y/n]"
-        read answer
-        case $answer in
-            "y"|"Y"|"yes")
-                add_shixremote
-                ;;
-            *)
-                ;;
-        esac
-    fi
-
-    popd
 }
 
 check_not_in_shell() {
@@ -81,7 +79,7 @@ save_remoteshix() {
 
 load_remoteshix() {
     if git remote|grep "$GITSHIXREMOTENAME" 1>/dev/null 2>/dev/null; then
-        git pull "$GITSHIXREMOTENAME" $NAME
+        git pull "$GITSHIXREMOTENAME" $NAME 2>/dev/null || echo "Remote ref not found"
     fi
 }
 
@@ -94,13 +92,14 @@ shixedit() {
     
     pushd $SHIXDIR
     load_remoteshix
-    git checkout $NAME
+    git checkout -B $NAME
 
     FNAME=$SHIXDIR/shells/$NAME.nix
     if [ ! -f $FNAME ]; then
         read -p "Do you wish to create a new shix \"$NAME\" ? [y/N] " -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
+            mkdir -p $(dirname $FNAME)
             cp $SHIXDIR/.example.nix $FNAME
             sed -i "s/ShixExample/$NAME/g" $FNAME
         else
@@ -130,13 +129,24 @@ shixstart() {
         exit 1;
     fi
 
-    if [ ! -f $SHIXDIR/shells/$1 ]; then
+    pushd $SHIXDIR
+
+    if ! git branch | grep $1 1>/dev/null 2>/dev/null; then
         echo "Shell $1 doesn't exist"
         echo "Use \"shix edit $1\" to create it"
         exit 1;
     fi
 
-    nix run $SHIXDIR#$1
+    git checkout $1
+
+    if [ ! -f $SHIXDIR/shells/$1.nix ]; then
+        echo "Shell $1 doesn't exist"
+        echo "Use \"shix edit $1\" to create it"
+        exit 1;
+    fi
+
+    nix run .#$1
+    popd
 }
 
 if [ $# -eq 0 ]; then
@@ -144,6 +154,7 @@ if [ $# -eq 0 ]; then
     echo -e "\tshix <name>: Starts the shell <name>"
     echo -e "\tshix edit <name>: Edit the shell <name>"
     echo -e "\tshix remote <url> <name>: Start the shell <name> located in the remote git at <url>"
+    exit 1;
 fi
 
 case $1 in
