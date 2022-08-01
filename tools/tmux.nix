@@ -123,7 +123,7 @@ in with colorstool; rec {
       "status-right-length" = vars.status.right.length;
 
       "window-status-current-format" = tmuxfmts [
-        { txt = " "; bg="default"; fg = colors.active; add="nobold,noitalics"; }
+        { txt = " "; bg="default"; fg = colors.highlight; add="nobold,noitalics"; }
         { txt = "#W"; add = "bold"; }
         { txt = " "; add="nobold"; }
       ];
@@ -137,7 +137,7 @@ in with colorstool; rec {
         fg = colors.inactive;
         add="nobold,italics";
       };
-      "window-status-activity-style" = tmuxstyle { fg = colors.highlight; add = "bold,noitalics"; };
+      "window-status-activity-style" = tmuxstyle { fg = colors.active; add = "bold,noitalics"; };
       "window-status-bell-style" = tmuxstyle { fg = colors.highlight; add = "reverse,bold,noitalics"; };
     };
 
