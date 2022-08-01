@@ -90,6 +90,11 @@ shixedit() {
     fi
     NAME="$1"
     
+    if [[ "$FORBIDDEN_NAMES" == *"$NAME"* ]]; then
+        echo "This name cannot be set, please choose another one"
+        exit 1;
+    fi
+
     pushd $SHIXDIR
     load_remoteshix
     git checkout -B $NAME
