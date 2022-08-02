@@ -37,12 +37,12 @@ in rec {
     packages = [];
   };
 
-  mkBashrc = { name, packages, shell, ...}: with shell; let
+  mkBashrc = { name, packages, shell, extra, ...}: with shell; let
     all_scripts = builtins.concatStringsSep "\n\n" (
       pkgs.lib.attrsets.mapAttrsToList generate_script (scripts // (base_scripts name))
     );
 
-    extra_path = if (builtins.length packages) > 0 then
+    add_path = if (builtins.length packages) > 0 then
       "export PATH=$PATH:" + (lib.strings.makeBinPath packages)
     else "";
 
@@ -53,9 +53,12 @@ in rec {
       ${ps1tool.import_git_ps1}
       export PS1="${ps1}"
     '') + ''
-      ${extra_path}
+      ${add_path}
       cd $HOME
-    '' + "\n" + bashInitExtra;
+
+      ${bashInitExtra}
+      ${extra.bashrc}
+    '';
   };
 
   generate_script = name: text: ''

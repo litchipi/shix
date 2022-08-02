@@ -1,5 +1,6 @@
 pkgs:
 let
+  tmux = "${pkgs.tmux}/bin/tmux";
   lib = pkgs.lib;
   colorstool = import ./colors.nix pkgs;
 in with colorstool; rec {
@@ -55,10 +56,10 @@ in with colorstool; rec {
   default_tmux_config = {
     enable = false;
     notheme = false;
-    tmux_vars_overwrite = {};
-    tmux_theme_overwrite = vars: {};
-    tmux_configs_files = [];
-    tmux_config_extra = "";
+    vars_overwrite = {};
+    theme_overwrite = vars: {};
+    configs_files = [];
+    config_extra = "";
     exec = "${pkgs.bashInteractive}/bin/bash";
   };
   
@@ -142,11 +143,11 @@ in with colorstool; rec {
     };
 
     tmux_theme_file = let
-      vars = lib.attrsets.recursiveUpdate tmux_vars tmux_vars_overwrite;
+      vars = lib.attrsets.recursiveUpdate tmux_vars vars_overwrite;
     in pkgs.writeTextFile {
       name = "tmux_${name}_theme.conf";
       text = generate_theme
-        (lib.attrsets.recursiveUpdate (tmux_theme vars) (tmux_theme_overwrite vars));
+        (lib.attrsets.recursiveUpdate (tmux_theme vars) (theme_overwrite vars));
     };
     tmux_other_configs = pkgs.writeTextFile {
       name = "tmux_${name}_configs.conf";
@@ -155,16 +156,38 @@ in with colorstool; rec {
         set -ga terminal-overrides ",*256col*:Tc"
         set -g @plugin 'nhdaly/tmux-better-mouse-mode'
 
-      '' + tmux_config_extra;
+      '' + config_extra;
     };
   in pkgs.concatTextFile {
     name = "tmux_${name}.conf";
     files = (if notheme then [] else [tmux_theme_file]) ++ [
       tmux_other_configs
-    ] ++ tmux_configs_files;
+    ] ++ configs_files;
   };
 
   # Generate a tmux session isolated from the global system one, with the custom configuration
-  generate_command = { name, tmux_config, ... }: "tmux -L \"${name}\" -f \"${tmux_config}\"";
-  quit_command = name: "tmux -L \"${name}\" kill-server";
+  generate_command = { name, tmux_config, ... }: "${tmux} -L \"${name}\" -f \"${tmux_config}\"";
+  extra = { name, ... }: {
+    init_script = ''
+      echo "source ~/.bashrc" > ~/.profile
+    '';
+    exit_script = "";
+
+    bashrc = ''
+      quit() {
+        ${tmux} -L "${name}" kill-server;
+      }
+
+      reload() {
+        if [ $# -eq 1 ]; then
+          CFG="$1"
+        else
+          echo "Usage: $0 <config file>"
+          exit 1;
+        fi
+
+        ${tmux} -L "${name}" source-file $CFG;
+      }
+    '';
+  };
 }

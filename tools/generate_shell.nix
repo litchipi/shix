@@ -14,6 +14,12 @@ pkgs: let
     clean_before = false;
   };
 
+  default_extra_config = {
+    bashrc = "";
+    init_script = "";
+    exit_script = "";
+  };
+
 in {
   mkShell = {
     name,
@@ -39,10 +45,23 @@ in {
     }) { ok = true; list = []; }
     (lib.attrsets.mapAttrsToList (name: value: {inherit name value; }) (builtins.deepSeq checklist checklist));
 
-    shellconf = lib.attrsets.recursiveUpdate bashtool.default_shell_config shell;
-    tmuxconf = lib.attrsets.recursiveUpdate tmuxtool.default_tmux_config tmux;
-    dirsconf = lib.attrsets.recursiveUpdate (default_dirs_config name) dirs;
-    cfg = (cfg_raw // { shell = shellconf; tmux = tmuxconf; dirs = dirsconf; });
+
+    complete_conf = {
+      shell = lib.attrsets.recursiveUpdate bashtool.default_shell_config shell;
+      tmux = lib.attrsets.recursiveUpdate tmuxtool.default_tmux_config tmux;
+      dirs = lib.attrsets.recursiveUpdate (default_dirs_config name) dirs;
+      colors = lib.attrsets.recursiveUpdate (colorstool.default_colors) colors;
+    };
+
+    cfg = lib.attrsets.recursiveUpdate cfg_raw {
+      inherit (complete_conf) shell tmux dirs;
+      inherit colors;
+      extra = lib.attrsets.recursiveUpdate default_extra_config (
+        if cfg.tmux.enable then tmuxtool.extra cfg
+        else {}
+      );
+    };
+
     shellCommand = if (builtins.isNull shellCommand) then shell.bin else shellCommand;
 
     shell_exec = if tmux.enable
@@ -52,15 +71,15 @@ in {
       else shellCommand;
 
     custom_bashrc = bashtool.mkBashrc cfg;
-    links_all = { direct = {}; dirs_inside = {}; } // dirsconf.symLinks;
+    links_all = lib.attrsets.recursiveUpdate { direct = {}; dirs_inside = {}; } cfg.dirs.symLinks;
 
     links_direct = builtins.concatStringsSep "\n" (lib.attrsets.mapAttrsToList (path: src:
     ''
 
       # Creating link "${path}"
-      rm -f ${dirsconf.paths.home}/${path}
-      mkdir -p $(dirname ${dirsconf.paths.home}/${path})
-      ln -s ${src} ${dirsconf.paths.home}/${path}
+      rm -f ${cfg.dirs.paths.home}/${path}
+      mkdir -p $(dirname ${cfg.dirs.paths.home}/${path})
+      ln -s ${src} ${cfg.dirs.paths.home}/${path}
 
     ''
     ) links_all.direct);
@@ -70,51 +89,52 @@ in {
       # Generating a link for each directory inside "${src}"
       for d in $(ls -d ${src}/*); do
         NAME=$(basename $d)
-        mkdir -p ${dirsconf.paths.home}/${path}
-        rm -f ${dirsconf.paths.home}/${path}/$NAME
-        ln -s $d ${dirsconf.paths.home}/${path}/$NAME
+        mkdir -p ${cfg.dirs.paths.home}/${path}
+        rm -f ${cfg.dirs.paths.home}/${path}/$NAME
+        ln -s $d ${cfg.dirs.paths.home}/${path}/$NAME
       done
     ''
     ) links_all.dirs_inside);
 
-    shell_activate = with dirsconf; pkgs.writeScript "${name}_shell_activate.sh" (''
+    shell_activate = with cfg.dirs; pkgs.writeScript "${name}_shell_activate.sh" (''
       set -e
     ''
 
     # If want a clean workspace before starting, remove everything
     + (if clean_before then ''
-      rm -rf ${paths.home}
+      rm -rf ${cfg.dirs.paths.home}
     '' else "")
     + ''
-      mkdir -p ${paths.home}
-      rm -f ${paths.home}/data ${paths.home}/${builtins.concatStringsSep " ${paths.home}/" homeLinks}
+      mkdir -p ${cfg.dirs.paths.home}
+      rm -f ${cfg.dirs.paths.home}/data ${cfg.dirs.paths.home}/${builtins.concatStringsSep " ${cfg.dirs.paths.home}/" homeLinks}
     ''
 
     # Link paths.data in the home directory
-    + (if (builtins.isNull paths.data) then "" else ''
-      mkdir -p ${paths.data}
-      ln -s ${paths.data} ${paths.home}/data
+    + (if (builtins.isNull cfg.dirs.paths.data) then "" else ''
+      mkdir -p ${cfg.dirs.paths.data}
+      ln -s ${cfg.dirs.paths.data} ${cfg.dirs.paths.home}/data
     '')
 
     # Link dotfiles inside home directory
     + (builtins.concatStringsSep "\n" (builtins.map (path:
-      "ln -s $HOME/${path} ${paths.home}/${path}"
+      "ln -s $HOME/${path} ${cfg.dirs.paths.home}/${path}"
     ) homeLinks)) + ''
 
       ${links_direct}
       ${links_dirs_inside}
 
       # Remove annoying messages from Ubuntu
-      touch ${paths.home}/.sudo_as_admin_successful
+      touch ${cfg.dirs.paths.home}/.sudo_as_admin_successful
 
-      cp $HOME/.bashrc ${paths.home}/.bashrc
-      cat ${custom_bashrc} >> ${paths.home}/.bashrc
+      rm -f ${cfg.dirs.paths.home}/.bashrc && touch ${cfg.dirs.paths.home}/.bashrc
+      cat $HOME/.bashrc >> ${cfg.dirs.paths.home}/.bashrc
+      cat ${custom_bashrc} >> ${cfg.dirs.paths.home}/.bashrc
 
-      export SHELL="${shellconf.bin}"
+      export SHELL="${cfg.shell.bin}"
       export OLDHOME="$HOME"
-      export HOME="${paths.home}"
+      export HOME="${cfg.dirs.paths.home}"
 
-      # Remove any external source if they cannot be reached from inside the HOME
+      # Remove any external "source" if they cannot be reached from inside the new HOME
       for src in $(grep -E "^\s?+source" $HOME/.bashrc | awk -F ' ' '{print $2}'); do
         if [ "$src" = "~/.profile" ]; then
           sed -i "s+source $src+: # source $src+g" $HOME/.bashrc
@@ -135,16 +155,12 @@ in {
       done
 
       ${initScript}
+      ${cfg.extra.init_script}
 
-    '' + (if tmux.enable then ''
-      echo "source ~/.bashrc" > ~/.profile
-      quit() {
-        ${tmuxtool.quit_command name}
-      }
-
-    '' else "") + shell_exec + ''
+      ${shell_exec}
 
       ${exitScript}
+      ${cfg.extra.exit_script}
       exit 0;
     '');
   in {
