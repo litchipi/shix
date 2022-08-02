@@ -90,10 +90,9 @@ in rec {
   # Spawning a custom tmux when creating the shell
   tmux = {
     enable = true;
-    inherit name;
 
     # Overwrite the theme of some elements of the global tmux configuration
-    tmux_theme_overwrite = vars: {
+    theme_overwrite = vars: {
       "window-status-current-format" = tmuxtool.tmuxfmts [
         { txt = "$ "; bg = "default"; fg=colors.highlight; add="nobold,noitalics"; }
         { txt = "#W"; fg=colors.primary; add="bold"; }
@@ -104,7 +103,7 @@ in rec {
     };
 
     # Overwrite some variables that are set in the tmux config (see util code)
-    tmux_vars_overwrite = {
+    vars_overwrite = {
       status.left = {
         length = 100;
         left = "#I:#P";                     # Left part of the left status bar
