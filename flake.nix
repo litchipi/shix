@@ -42,11 +42,16 @@
           (builtins.readDir  dir)
         )
       );
+    
+    shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./shix.sh);
   in {
-    apps = builtins.listToAttrs (builtins.map genShell (find_all_files ./shells));
-    nixosModules.default = let 
-      shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./.shix.sh);
-    in {
+    apps = builtins.listToAttrs (builtins.map genShell (find_all_files ./shells)) // {
+      shix = {
+        type = "app";
+        program = "${shixbin}/bin/shix";
+      };
+    };
+    nixosModules.default = {
       config.environment.systemPackages = [ shixbin pkgs.git ];
     };
   });

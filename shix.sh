@@ -1,6 +1,7 @@
 set -e
 
 SHIX_SRC="https://github.com/litchipi/shix"
+RAW_SHIX_SRC="https://raw.githubusercontent.com/litchipi/shix/main/shix.sh"
 SHIXDIR="$HOME/.shix"
 FORBIDDEN_NAMES="edit remote"
 GITSHIXREMOTENAME="shixremote"
@@ -105,7 +106,7 @@ shixedit() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             mkdir -p $(dirname $FNAME)
-            cp $SHIXDIR/.example.nix $FNAME
+            cp $SHIXDIR/shells/example.nix $FNAME
             sed -i "s/ShixExample/$NAME/g" $FNAME
         else
             exit 0;
@@ -136,13 +137,15 @@ shixstart() {
 
     pushd $SHIXDIR
 
-    if ! git branch | grep $1 1>/dev/null 2>/dev/null; then
-        echo "Shell $1 doesn't exist"
-        echo "Use \"shix edit $1\" to create it"
-        exit 1;
-    fi
+    if [[ "$1" != "example" ]]; then
+        if ! git branch | grep $1 1>/dev/null 2>/dev/null; then
+            echo "Shell $1 doesn't exist"
+            echo "Use \"shix edit $1\" to create it"
+            exit 1;
+        fi
 
-    git checkout $1
+        git checkout $1
+    fi
 
     if [ ! -f $SHIXDIR/shells/$1.nix ]; then
         echo "Shell $1 doesn't exist"
@@ -154,8 +157,17 @@ shixstart() {
     popd
 }
 
+install_shix() {
+    echo -n "#!" > ~/.local/bin/shix
+    which bash >> ~/.local/bin/shix
+    echo "" >> ~/.local/bin/shix
+    wget $RAW_SHIX_SRC -q -O - >> ~/.local/bin/shix
+    chmod +x ~/.local/bin/shix
+}
+
 if [ $# -eq 0 ]; then
     echo "Please provide arguments, examples:"
+    echo -e "\tshix init: Setup the directory if needed"
     echo -e "\tshix <name>: Starts the shell <name>"
     echo -e "\tshix edit <name>: Edit the shell <name>"
     echo -e "\tshix remote <url> <name>: Start the shell <name> located in the remote git at <url>"
@@ -180,6 +192,15 @@ case $1 in
         shift 1;
         check_deps
         check_init
+        ;;
+    "install")
+        shift 1;
+        check_deps
+        if ! install_shix; then
+            echo "Installation failed"
+        else
+            echo "Installation succeeded"
+        fi
         ;;
     *)
         check_deps
