@@ -1,5 +1,38 @@
 pkgs: let
   lib = pkgs.lib;
+  
+  pow =
+    let
+      pow' = base: exponent: value:
+        if exponent == 0
+        then 1
+        else if exponent <= 1
+        then value
+        else (pow' base (exponent - 1) (value * base));
+    in base: exponent: pow' base exponent base;
+
+
+  # Taken from https://gist.github.com/corpix/f761c82c9d6fdbc1b3846b37e1020e11
+  hexToDec = v:
+  let
+    hexToInt = {
+      "0" = 0; "1" = 1;  "2" = 2;
+      "3" = 3; "4" = 4;  "5" = 5;
+      "6" = 6; "7" = 7;  "8" = 8;
+      "9" = 9; "a" = 10; "b" = 11;
+      "c" = 12;"d" = 13; "e" = 14;
+      "f" = 15;
+    };
+    chars = lib.strings.stringToCharacters v;
+    charsLen = builtins.length chars;
+  in
+    lib.lists.foldl
+      (a: v: a + v)
+      0
+      (lib.lists.imap0
+        (k: v: hexToInt."${v}" * (pow 16 (charsLen - k - 1)))
+        chars);
+
 in rec {
   default_colors = {
     primary = {r=255; g=0; b=0;};
@@ -10,11 +43,23 @@ in rec {
     inactive = {r=128; g=0; b=0;};
   };
 
+  create_palette = colors: builtins.mapAttrs (name: value:
+    if builtins.isString value
+        then fromhex value
+        else value
+  ) colors;
+
   tohex = {r, g, b, ...}: let
     f = x: lib.strings.toLower (lib.strings.fixedWidthString 2 "0" (lib.trivial.toHexString x));
   in
     "${f r}${f g}${f b}";
-  
+
+  fromhex = hex_raw: let
+    hex = lib.strings.toLower (lib.strings.removePrefix "#" hex_raw);
+    col = idx: hexToDec (builtins.substring idx 2 hex);
+  in
+    { r = col 0; g = col 2; b = col 4; };
+
   basic = {
     black = {r=0; g=0; b=0;};
     white = {r=255; g=255; b=255;};
