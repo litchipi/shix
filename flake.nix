@@ -28,7 +28,7 @@
           (pkgs.lib.strings.splitString "/"
             (builtins.toString fname)
         )
-        );
+      );
 
     shelltool = import ./tools/generate_shell.nix pkgs;
     shellArgs = {

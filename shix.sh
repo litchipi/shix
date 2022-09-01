@@ -66,7 +66,7 @@ check_init() {
 check_not_in_shell() {
     if [ ! -z ${SHIX_SHELL+x} ]; then
         echo 'Already in a shix shell, cannot nest them'
-        return
+        exit 1;
     fi
 
     export SHIX_SHELL=1
