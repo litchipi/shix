@@ -5,8 +5,9 @@ pkgs: let
     style ? null,
     color ? null,
     text ? "",
+    reset ? true,
     ...
-  }: "\\["
+  }: "\\[" + (if reset then colorstool.reset else "")
   + (if builtins.isNull style then "" else style)
   + (if builtins.isNull color then "" else ansi color)
   + "\\]${text}";
