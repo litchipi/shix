@@ -82,7 +82,7 @@ in with colorstool; rec {
           colors = {
             left = { bg=colors.primary; fg=colorstool.text_contrast colors.primary; };
             mid = { bg=colors.secondary; fg=colorstool.text_contrast colors.secondary; };
-            right = { bg = basic.gray 40; fg = colors.highlight; };
+            right = { bg = basic.gray 40; fg = colors.tertiary; };
           };
         };
         right = {
