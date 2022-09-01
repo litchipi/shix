@@ -72,12 +72,12 @@ in rec {
   reset = escape_code + "0m";
   
   style = {
-    bold = reset + escape_code + "1m";
-    italic = reset + escape_code + "3m";
-    underline = reset + escape_code + "4m";
-    reverse = reset + escape_code + "7m";
-    striked = reset + escape_code + "9m";
-    double_underline = reset + escape_code + "21m";
+    bold = escape_code + "1m";
+    italic = escape_code + "3m";
+    underline = escape_code + "4m";
+    reverse = escape_code + "7m";
+    striked = escape_code + "9m";
+    double_underline = escape_code + "21m";
   };
 
   text_contrast = {r, g, b, ...}: let
