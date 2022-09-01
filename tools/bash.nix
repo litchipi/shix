@@ -21,7 +21,7 @@ pkgs: let
         nix build nixpkgs/22.05#$package
         package_path=$(readlink ./result)
         rm ./result
-        echo "export PATH=\$PATH:$package_path/bin" >> ~/.profile
+        echo "export PATH=\$PATH:$package_path/bin" >> ~/.bashrc
         export PATH="$PATH:$package_path/bin"
       fi
     '';
