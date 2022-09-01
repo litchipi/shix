@@ -120,6 +120,18 @@ shixedit() {
     popd
 }
 
+shixcompose() {
+    echo "$@"
+    if [ $# -ne 2 ]; then
+        echo "Usage: shix compose <config file> <other config url>"
+        exit 1;
+    fi
+
+    export SHIXCOMP_A=$(realpath $1)
+    export SHIXCOMP_B=$(realpath $2)
+    nix run $SHIXDIR#compose --impure
+}
+
 shixremote() {
     if [ $# -ne 2 ]; then
         echo "Usage: shix remote <url> <name>"
@@ -171,6 +183,7 @@ if [ $# -eq 0 ]; then
     echo -e "\tshix <name>: Starts the shell <name>"
     echo -e "\tshix edit <name>: Edit the shell <name>"
     echo -e "\tshix remote <url> <name>: Start the shell <name> located in the remote git at <url>"
+    echo -e "\tshix compose <config> <path/url>: Merges the local config <config> with the remote one from <url> and starts the resulting shell"
     exit 1;
 fi
 
@@ -187,6 +200,12 @@ case $1 in
         check_deps
         check_not_in_shell
         shixremote $@
+        ;;
+    "compose")
+        shift 1;
+        check_deps
+        check_not_in_shell
+        shixcompose $@
         ;;
     "init")
         shift 1;

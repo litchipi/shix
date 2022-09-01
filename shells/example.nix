@@ -1,15 +1,6 @@
-pkgs:
-let
+{ pkgs, colorstool, tmuxtool, ps1tool, ...}: rec {
   # Name of the shell
   name = "ShixExample";
-
-  # Some utilities we will use 
-  colorstool = import ../tools/colors.nix pkgs;
-  tmuxtool = import ../tools/tmux.nix pkgs;
-  ps1tool = import ../tools/ps1.nix pkgs;
-
-in rec {
-  inherit name;
 
   # The color palette that will be used for generated themes
   colors = {

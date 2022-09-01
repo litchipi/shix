@@ -45,7 +45,6 @@ in {
     }) { ok = true; list = []; }
     (lib.attrsets.mapAttrsToList (name: value: {inherit name value; }) (builtins.deepSeq checklist checklist));
 
-
     complete_conf = {
       shell = lib.attrsets.recursiveUpdate bashtool.default_shell_config shell;
       tmux = lib.attrsets.recursiveUpdate tmuxtool.default_tmux_config tmux;
@@ -62,13 +61,12 @@ in {
       );
     };
 
-    shellCommand = if (builtins.isNull shellCommand) then shell.bin else shellCommand;
-
-    shell_exec = if tmux.enable
+    shell_cmd = if (builtins.isNull shellCommand) then cfg.shell.bin else shellCommand;
+    shell_exec = if cfg.tmux.enable
       then let
         tmux_config_gen = tmuxtool.generate_config cfg;
-      in tmuxtool.generate_command { inherit name; tmux_config = tmux_config_gen; exec = shellCommand; }
-      else shellCommand;
+      in tmuxtool.generate_command { inherit name; tmux_config = tmux_config_gen; exec = shell_cmd; }
+      else shell_cmd;
 
     custom_bashrc = bashtool.mkBashrc cfg;
     links_all = lib.attrsets.recursiveUpdate { direct = {}; dirs_inside = {}; } cfg.dirs.symLinks;
@@ -163,10 +161,8 @@ in {
       ${cfg.extra.exit_script}
       exit 0;
     '');
-  in {
-    type = if (builtins.deepSeq configcheck configcheck.ok)
-      then "app"
-      else builtins.throw "Failed checks: ${builtins.concatStringsSep ", " configcheck.list}";
-    program = pkgs.lib.debug.traceValSeq "${shell_activate}";
-  };
+  in (if (builtins.deepSeq configcheck configcheck.ok)
+    then shell_activate
+    else builtins.throw "Failed checks: ${builtins.concatStringsSep ", " configcheck.list}"
+  );
 }
