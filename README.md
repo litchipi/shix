@@ -27,6 +27,33 @@ shix remote <url> <name>
 Uses the remote shells stored at `<url>` (github or private git repo), to start the shell `<name>`
 > Note: The url has to be formatted in a way that `nix` can use it, like "github:", "git+ssh:", etc ...
 
+## Shell composition, usage in projects
+
+You can setup a shix devshell inside your project that can be "composed" with some more personnal settings
+In the flake of the project, add:
+``` nix
+outputs: let
+   pkgs = import inputs.nixpkgs {
+      system = <system>;
+      overlays = [ inputs.shix.overlays.default ];
+   };
+in {
+   apps.<system>.<appname> = pkgs.lib.shix.mkShixCompose ./shix.nix;
+};
+```
+And setup the common shell configuration inside the `shix.nix` file (or whatever name you chose)
+
+Then you can do `nix run .#<appname> $HOME/my_perso_shix.nix`, and the tool will merge the common configuration and custom one, then start the shell.
+
+It allows then to set up in the common configuration things like:
+- Fetch project dev dependencies and build tools
+- Setup help scripts and misc automation
+
+And at the same time allow any individual developper to set up his environment:
+- Fancy PS1 and theming
+- Directory configuration
+- Overwrite any config he doesn't like on the common config
+
 ## Want to try it out ?
 
 ```
@@ -38,7 +65,6 @@ To test it without installing the tool, or the shells
 
 - `git`
 - `nix` with enabled flakes and nix-commands.
-
 
 ## Installation
 
