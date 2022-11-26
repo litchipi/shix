@@ -13,8 +13,8 @@
   };
 
   # Where to place the directories for
-  dirs.new_home = "/tmp/my_new_temporary_home";    # The home directory (can be temporary)
-  dirs.data_dir = "/tmp/some_persistent_storage";  # The data directory (should be persistent)
+  dirs.paths.home = "/tmp/my_new_temporary_home";    # The home directory (can be temporary)
+  dirs.paths.data = "/tmp/some_persistent_storage";  # The data directory (should be persistent)
 
   # Create symlinks by directly linking the source to the destination
   dirs.symLinks.direct = {
@@ -43,7 +43,7 @@
   # Custom aliases / scripts that are set for this shell
   shell.scripts = with colorstool; {
     cow = "cowsay \"$@\"";
-  
+
     readnotes = ''
       touch $HOME/data/notes
       tail +1f $HOME/data/notes
