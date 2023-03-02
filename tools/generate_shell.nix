@@ -1,4 +1,5 @@
 {pkgs, lib, ...}@args: let
+  secretstool = import ../tools/secrets.nix args;
   bashtool = import ../tools/bash.nix args;
   tmuxtool = import ../tools/tmux.nix args;
   colorstool = import ../tools/colors.nix args;
@@ -28,6 +29,7 @@ in {
     initScript ? "", exitScript ? "",
 
     shell ? {}, tmux ? {}, dirs ? {},
+    secrets ? [],
     colors ? colorstool.default_colors,
   ...}@cfg_raw:
   let
@@ -160,6 +162,7 @@ in {
         fi
       done
 
+      ${secretstool.mkSecrets secrets}
       ${initScript}
       ${cfg.extra.init_script}
 
@@ -167,6 +170,7 @@ in {
 
       ${exitScript}
       ${cfg.extra.exit_script}
+      ${secretstool.rmSecrets secrets}
       exit 0;
     '');
   in (if (builtins.deepSeq configcheck configcheck.ok)
