@@ -6,7 +6,7 @@ pkgs: let
 
   default_dirs_config = name: {
     symLinks = {};
-    homeLinks = [ ".config" ".cache" ];
+    homeLinks = [ ".config" ".cache" ".local/share/nvim/site/autoload" ".gitconfig" ".git-credentials"];
     paths = {
       home = "/tmp/${name}_home";
       data = null;
