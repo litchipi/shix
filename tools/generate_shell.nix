@@ -115,9 +115,12 @@ in {
     '')
 
     # Link dotfiles inside home directory
-    + (builtins.concatStringsSep "\n" (builtins.map (path:
-      "ln -s $HOME/${path} ${cfg.dirs.paths.home}/${path}"
-    ) homeLinks)) + ''
+    + (builtins.concatStringsSep "\n" (builtins.map (path: ''
+      if [[ -e "$HOME/${path}" ]]; then
+        mkdir -p $(dirname ${cfg.dirs.paths.home}/${path})
+        ln -s $HOME/${path} ${cfg.dirs.paths.home}/${path}
+      fi
+    '') homeLinks)) + ''
 
       ${links_direct}
       ${links_dirs_inside}
