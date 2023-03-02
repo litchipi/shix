@@ -40,6 +40,15 @@
     neo-cowsay
   ];
 
+  # Set up some libraies for the shell
+  libraries = {
+    # Added to PKG_CONFIG_PATH var
+    pkgconfig = []; #openssl for example
+    vars = {
+      # LIBCLANG_PATH = pkgs.libclang for example
+    };
+  };
+
   # Custom aliases / scripts that are set for this shell
   shell.scripts = with colorstool; {
     cow = "cowsay \"$@\"";

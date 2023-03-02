@@ -24,6 +24,7 @@ in {
   mkShell = {
     name,
     packages ? [],
+    libraries ? {},
     shellCommand ? null,
     initScript ? "", exitScript ? "",
 

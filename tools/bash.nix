@@ -34,17 +34,37 @@ in rec {
     ps1 = null;
     scripts = {};
     bashInitExtra = "";
-    packages = [];
   };
 
-  mkBashrc = { name, packages, shell, extra, ...}: with shell; let
+  mkBashrc = { name, packages, shell, extra, libraries, ...}: with shell; let
+    default_libraries = {
+      pkgconfig = [];
+      vars = {};
+    };
+    libs = lib.attrsets.recursiveUpdate default_libraries libraries;
+
     all_scripts = builtins.concatStringsSep "\n\n" (
       pkgs.lib.attrsets.mapAttrsToList generate_script (scripts // (base_scripts name))
     );
 
-    add_path = if (builtins.length packages) > 0 then
-      "export PATH=$PATH:" + (lib.strings.makeBinPath packages)
+    add_path = "export PATH=" + (lib.strings.makeBinPath (packages ++
+      (if (builtins.length libs.pkgconfig) > 0 then [pkgs.pkg-config] else [])
+    )) + ":$PATH";
+
+    add_pkgconfig_libs = if (builtins.length libs.pkgconfig) > 0 then
+      "export PKG_CONFIG_PATH=" + (builtins.concatStringsSep ":" (builtins.map (l:
+        "${l.dev}/lib/pkgconfig"
+      ) libs.pkgconfig)) + ":$PKG_CONFIG_PATH"
     else "";
+
+    add_vars_libs = builtins.concatStringsSep "\n" (lib.attrsets.mapAttrsToList (name: pkg:
+      "export ${name}=\"${pkg}/lib\""
+    ) libs.vars);
+
+    add_libs = ''
+      ${add_pkgconfig_libs}
+      ${add_vars_libs}
+    '';
 
   in pkgs.writeTextFile {
     name = "custom_${name}_bashrc";
@@ -54,6 +74,7 @@ in rec {
       export PS1="${ps1}"
     '') + ''
       ${add_path}
+      ${add_libs}
       cd $HOME
 
       ${bashInitExtra}
