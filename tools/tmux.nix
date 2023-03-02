@@ -1,19 +1,20 @@
 {pkgs, pkgs_unstable,  ...}@args:
 let
   tmux = "${pkgs.tmux}/bin/tmux";
+  tmuxp = "${pkgs_unstable.tmuxp}/bin/tmuxp";
   lib = pkgs.lib;
   colorstool = import ./colors.nix pkgs;
 in with colorstool; rec {
-  
+
   col = c: if c == "default" then c else "#${tohex c}";
-  
+
   tmuxstyle = {fg ? null, bg ? null, add ? null, ...}: builtins.concatStringsSep ","
     ((if (builtins.isNull fg) then [] else [ "fg=${col fg}" ]) ++
     (if (builtins.isNull bg) then [] else [ "bg=${col bg}" ]) ++
     (if (builtins.isNull add) then [] else [ add ]));
-      
+
   tmuxfmts = cnt: builtins.concatStringsSep "" (builtins.map tmuxfmt cnt);
-  
+
   tmuxfmt = { txt, ...}@fmt: let
     all_styles = tmuxstyle fmt;
     style = if all_styles == "" then "" else "#[${all_styles}]";
@@ -61,8 +62,9 @@ in with colorstool; rec {
     configs_files = [];
     config_extra = "";
     exec = "${pkgs.bashInteractive}/bin/bash";
+    tmuxp_session = null;
   };
-  
+
   generate_config = { name, tmux, colors, ... }: with tmux; let
     generate_theme = theme: builtins.concatStringsSep "\n" (
       lib.attrsets.mapAttrsToList (name: cnt:
@@ -166,7 +168,10 @@ in with colorstool; rec {
   };
 
   # Generate a tmux session isolated from the global system one, with the custom configuration
-  generate_command = { name, tmux_config, ... }: "${tmux} -L \"${name}\" -f \"${tmux_config}\"";
+  generate_command = { name, tmux_config, tmuxp_session, ... }: if builtins.isNull tmuxp_session
+    then "${tmux} -L \"${name}\" -f \"${tmux_config}\""
+    else "${tmuxp} load -L \"${name}\" -f \"${tmux_config}\" -y -s \"${name}\" -2 ${tmuxp_session}";
+
   extra = { name, ... }: {
     init_script = ''
       echo "source ~/.bashrc" > ~/.profile
