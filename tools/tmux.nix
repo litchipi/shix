@@ -1,4 +1,4 @@
-pkgs:
+{pkgs, pkgs_unstable,  ...}@args:
 let
   tmux = "${pkgs.tmux}/bin/tmux";
   lib = pkgs.lib;

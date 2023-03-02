@@ -1,6 +1,6 @@
-pkgs: let
-  colorstool = import ./colors.nix pkgs;
-  
+{ pkgs, ...}@args: let
+  colorstool = import ./colors.nix args;
+
   create_ps1_element = with colorstool; {
     style ? null,
     color ? null,

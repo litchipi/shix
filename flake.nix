@@ -35,15 +35,19 @@
         )
       );
 
-    shelltool = import ./tools/generate_shell.nix pkgs;
+    tools_args = {
+      inherit pkgs pkgs_unstable;
+    };
+
+    shelltool = import ./tools/generate_shell.nix tools_args;
     shellArgs = {
       inherit inputs;
       inherit system;
       inherit pkgs;
       inherit pkgs_unstable;
-      colorstool = import ./tools/colors.nix pkgs;
-      tmuxtool = import ./tools/tmux.nix pkgs;
-      ps1tool = import ./tools/ps1.nix pkgs;
+      colorstool = import ./tools/colors.nix tools_args;
+      tmuxtool = import ./tools/tmux.nix tools_args;
+      ps1tool = import ./tools/ps1.nix tools_args;
     };
 
     mapShellScript = mapfct: override: f: mapfct (shelltool.mkShell
@@ -67,7 +71,7 @@
           (builtins.readDir  dir)
         )
       );
-    
+
     shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./shix.sh);
   in {
     apps = builtins.listToAttrs (builtins.map genShellNV (find_all_files ./shells)) // {

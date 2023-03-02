@@ -1,7 +1,7 @@
-pkgs: let
-  bashtool = import ../tools/bash.nix pkgs;
-  tmuxtool = import ../tools/tmux.nix pkgs;
-  colorstool = import ../tools/colors.nix pkgs;
+{pkgs, ...}@args: let
+  bashtool = import ../tools/bash.nix args;
+  tmuxtool = import ../tools/tmux.nix args;
+  colorstool = import ../tools/colors.nix args;
   lib = pkgs.lib;
 
   default_dirs_config = name: {
@@ -66,7 +66,12 @@ in {
     shell_exec = if cfg.tmux.enable
       then let
         tmux_config_gen = tmuxtool.generate_config cfg;
-      in tmuxtool.generate_command { inherit name; tmux_config = tmux_config_gen; exec = shell_cmd; }
+      in tmuxtool.generate_command {
+        inherit name;
+        tmux_config = tmux_config_gen;
+        tmuxp_session = cfg.tmux.tmuxp_session;
+        exec = shell_cmd;
+      }
       else shell_cmd;
 
     custom_bashrc = bashtool.mkBashrc cfg;

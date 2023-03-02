@@ -1,6 +1,6 @@
-pkgs: let
+{ pkgs, ...}@args: let
   lib = pkgs.lib;
-  
+
   pow =
     let
       pow' = base: exponent: value:
@@ -70,7 +70,7 @@ in rec {
   ansi = { r, g, b }: with builtins;
     escape_code + ''38;2;${toString r};${toString g};${toString b}m'';
   reset = escape_code + "0m";
-  
+
   style = {
     bold = escape_code + "1m";
     italic = escape_code + "3m";

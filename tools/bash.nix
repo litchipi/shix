@@ -1,7 +1,7 @@
-pkgs: let
+{ pkgs, ...}@args: let
   lib = pkgs.lib;
 
-  ps1tool = import ./ps1.nix pkgs;
+  ps1tool = import ./ps1.nix args;
 
   base_scripts = name: let
     name_sanitized = builtins.replaceStrings [" " "/" ] ["_" "_"] name;
