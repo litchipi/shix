@@ -3,11 +3,16 @@
 
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:nixos/nixpkgs/22.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = inputs: inputs.flake-utils.lib.eachDefaultSystem (system: let
     pkgs = import inputs.nixpkgs {
+      inherit system;
+    };
+    pkgs_unstable = import inputs.nixpkgs-unstable {
       inherit system;
     };
     lib = pkgs.lib;
@@ -32,7 +37,10 @@
 
     shelltool = import ./tools/generate_shell.nix pkgs;
     shellArgs = {
+      inherit inputs;
+      inherit system;
       inherit pkgs;
+      inherit pkgs_unstable;
       colorstool = import ./tools/colors.nix pkgs;
       tmuxtool = import ./tools/tmux.nix pkgs;
       ps1tool = import ./tools/ps1.nix pkgs;
