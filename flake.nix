@@ -37,6 +37,7 @@
 
     tools_args = {
       inherit pkgs pkgs_unstable;
+      lib = pkgs.lib;
     };
 
     shelltool = import ./tools/generate_shell.nix tools_args;

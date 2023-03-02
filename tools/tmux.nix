@@ -1,8 +1,7 @@
-{pkgs, pkgs_unstable,  ...}@args:
+{ lib, pkgs, pkgs_unstable,  ... }@args:
 let
   tmux = "${pkgs.tmux}/bin/tmux";
   tmuxp = "${pkgs_unstable.tmuxp}/bin/tmuxp";
-  lib = pkgs.lib;
   colorstool = import ./colors.nix pkgs;
 in with colorstool; rec {
 

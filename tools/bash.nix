@@ -1,5 +1,4 @@
-{ pkgs, ...}@args: let
-  lib = pkgs.lib;
+{ pkgs, lib, ...}@args: let
 
   ps1tool = import ./ps1.nix args;
 

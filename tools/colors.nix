@@ -1,5 +1,4 @@
-{ pkgs, ...}@args: let
-  lib = pkgs.lib;
+{ pkgs, lib, ...}@args: let
 
   pow =
     let

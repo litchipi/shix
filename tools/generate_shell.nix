@@ -1,8 +1,7 @@
-{pkgs, ...}@args: let
+{pkgs, lib, ...}@args: let
   bashtool = import ../tools/bash.nix args;
   tmuxtool = import ../tools/tmux.nix args;
   colorstool = import ../tools/colors.nix args;
-  lib = pkgs.lib;
 
   default_dirs_config = name: {
     symLinks = {};
