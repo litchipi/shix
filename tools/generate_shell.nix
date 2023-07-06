@@ -40,9 +40,9 @@
       touch $HOME/.sudo_as_admin_successful
 
       cat /host/home/$USER/.bashrc \
-        | sed "s/PS1=/: #PS1=/g" \
+        | sed "s/export PS1=/#export PS1=/g" \
         | grep -v -e "source.*git-prompt.*" \
-        >> $HOME/.bashrc
+        > $HOME/.bashrc
       
       ${initScript}
       ${shell_exec}
