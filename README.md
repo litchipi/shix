@@ -61,3 +61,10 @@ The code used to generate the shell can be read in `./tools/generate_shell.nix`.
 
 The sandbox is created using `bubblewrap`, you can see its usage in `./tools/bwrap.nix`.
 
+## Known limitations
+
+Because of [This issue](https://github.com/NixOS/nixpkgs/issues/42117), the environment inside
+`bubblewrap` won't be able to execute files with SUID bit set.
+
+For example, that means that `sudo` is not possible, at least until
+[this PR](https://github.com/NixOS/nixpkgs/pull/231673) lands.

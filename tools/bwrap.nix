@@ -19,6 +19,7 @@
       "/etc/passwd" = "/etc/passwd";
       "/etc/group" = "/etc/group";
       "/etc/profile" = "/etc/profile";
+      "/etc/protocols" = "/etc/protocols";
     };
 
     # Read + Write
