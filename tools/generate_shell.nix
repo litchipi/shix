@@ -39,10 +39,10 @@
       # Remove annoying messages from Ubuntu
       touch $HOME/.sudo_as_admin_successful
 
-      cat /host/etc/bashrc /host/home/$USER/.bashrc \
+      cat /host/home/$USER/.bashrc \
         | sed "s/PS1=/: #PS1=/g" \
         | grep -v -e "source.*git-prompt.*" \
-        > $HOME/.bashrc
+        >> $HOME/.bashrc
       
       ${initScript}
       ${shell_exec}

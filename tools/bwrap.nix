@@ -40,14 +40,14 @@ in
     env_vars ? {},
     create_dirs ? [],
     add_args ? [],
-    term ? "\"$TERM\"",
+    # term ? "\"$TERM\"",
   ... }: let
     all_binds = dir_binds name binds;
   in [
     "--cap-add ALL"
     "--die-with-parent"
     "--clearenv"
-    "--new-session"
+    # "--new-session"
     "--unshare-all"
     "--share-net"
     "--proc /proc"
@@ -60,7 +60,8 @@ in
   ++ (lib.attrsets.mapAttrsToList (dst: src: "--symlink ${src} \"${dst}\"") all_binds.symlinks)
   ++ [
     "--ro-bind ${bash_data.bashrc} /etc/bashrc"
-    "--setenv TERM ${term}"
+    "--setenv TERM xterm-256color"
+    "--setenv USER \"$USER\""
     "--setenv SHELL \"${bash_data.shell_bin}\""
     "--setenv PATH /run/wrappers/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin"
     "--setenv HOME ${dst_home}"

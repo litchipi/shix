@@ -70,8 +70,6 @@
       } data;
       bwrap_args = builtins.concatStringsSep " " bwrap_args_list;
     in pkgs.writeShellScript "${name_from_fname file}-shell" ''
-      set -x
-      echo ""
       if ! [ -d ${data.homeDir} ]; then
         mkdir -p ${data.homeDir}
       fi
