@@ -1,10 +1,7 @@
-{ pkgs, lib, ...}@args: let
-
+{ nixpkgs_rev, pkgs, lib, ...}@args: let
   ps1tool = import ./ps1.nix args;
-
   base_scripts = name: let
-    name_sanitized = builtins.replaceStrings [" " "/" ] ["_" "_"] name;
-    fname = "/tmp/${name_sanitized}_shell_addpkgs";
+    fname = "$HOME/.added_packages";
   in {
     add_pkgs = ''
       if [ $# -ne 1 ]; then
@@ -17,67 +14,64 @@
           echo "$package" >> ${fname}
         fi
 
-        nix build nixpkgs/22.05#$package
-        package_path=$(readlink ./result)
-        rm ./result
-        echo "export PATH=\$PATH:$package_path/bin" >> ~/.bashrc
-        export PATH="$PATH:$package_path/bin"
+        mkdir -p $HOME/.local/bin
+        nix build nixpkgs/${nixpkgs_rev}#$package && cp $(readlink ./result)/bin/* $HOME/.local/bin && rm ./result
       fi
     '';
   };
-
-in rec {
+  
   default_shell_config = {
     bin = "${pkgs.bashInteractive}/bin/bash";
-    config_file = "$HOME/.bashrc";
-    ps1 = null;
-    scripts = {};
     bashInitExtra = "";
+    scripts = {};
+    pkgconfig_libs = [];
+    ps1 = "\\u \\w $";
   };
 
-  mkBashrc = { name, packages, shell, extra, libraries, ...}: with shell; let
-    default_libraries = {
-      pkgconfig = [];
-      vars = {};
-    };
-    libs = lib.attrsets.recursiveUpdate default_libraries libraries;
+in rec {
+  build = add_bashrc: {
+    name,
+    shell ? {},
+  ... }@cfg: let
+    shell_config = lib.attrsets.recursiveUpdate default_shell_config shell;
+  in {
+    bashrc = mkBashrc add_bashrc cfg shell_config;
+    shell_bin = shell_config.bin;
+    ps1 = shell_config.ps1;
+  };
 
+  mkBashrc = add_bashrc: {
+    name,
+    packages ? [],
+  ...}: cfg: let
     all_scripts = builtins.concatStringsSep "\n\n" (
-      pkgs.lib.attrsets.mapAttrsToList generate_script (scripts // (base_scripts name))
+      pkgs.lib.attrsets.mapAttrsToList generate_script (cfg.scripts // (base_scripts name))
     );
 
     add_path = "export PATH=" + (lib.strings.makeBinPath (packages ++
-      (if (builtins.length libs.pkgconfig) > 0 then [pkgs.pkg-config] else [])
-    )) + ":$PATH";
+      (if (builtins.length cfg.pkgconfig_libs) > 0 then [pkgs.pkg-config] else [])
+    )) + ":$HOME/.local/bin:$PATH";
 
-    add_pkgconfig_libs = if (builtins.length libs.pkgconfig) > 0 then
+    add_pkgconfig_libs = if (builtins.length cfg.pkgconfig_libs) > 0 then
       "export PKG_CONFIG_PATH=" + (builtins.concatStringsSep ":" (builtins.map (l:
         "${l.dev}/lib/pkgconfig"
-      ) libs.pkgconfig)) + ":$PKG_CONFIG_PATH"
+      ) cfg.pkgconfig_libs)) + ":$PKG_CONFIG_PATH"
     else "";
-
-    add_vars_libs = builtins.concatStringsSep "\n" (lib.attrsets.mapAttrsToList (name: pkg:
-      "export ${name}=\"${pkg}/lib\""
-    ) libs.vars);
-
-    add_libs = ''
-      ${add_pkgconfig_libs}
-      ${add_vars_libs}
-    '';
 
   in pkgs.writeTextFile {
     name = "custom_${name}_bashrc";
-    text = ''
-    '' + all_scripts + "\n" + (if builtins.isNull ps1 then "" else ''
+    text = all_scripts + "\n" + (if builtins.isNull cfg.ps1 then "" else ''
       ${ps1tool.import_git_ps1}
-      export PS1="${ps1}"
+      export PS1="${cfg.ps1}"
     '') + ''
+
       ${add_path}
-      ${add_libs}
+      ${add_pkgconfig_libs}
       cd $HOME
 
-      ${bashInitExtra}
-      ${extra.bashrc}
+      ${add_bashrc}
+
+      ${cfg.bashInitExtra}
     '';
   };
 

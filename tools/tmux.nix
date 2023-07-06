@@ -1,11 +1,19 @@
-{ lib, pkgs, pkgs_unstable,  ... }@args:
+{ lib, pkgs, ... }@args:
 let
-  tmux = "${pkgs.tmux}/bin/tmux";
-  tmuxp = "${pkgs_unstable.tmuxp}/bin/tmuxp";
-  colorstool = import ./colors.nix pkgs;
-in with colorstool; rec {
+  colorstool = import ./colors.nix args;
 
-  col = c: if c == "default" then c else "#${tohex c}";
+  col = c: if c == "default" then c else "#${colorstool.tohex c}";
+
+  statusbar = {
+    disk_usage = " #(df -l $HOME|awk 'NR==2 {print $5}')";
+    connected = "#(if ping -c 1 1.1.1.1 2>/dev/null 1>/dev/null; then echo '󰖟'; else echo ''; fi)";
+    int_ip= "#(ip -4 -o a|awk '$2!=\"lo\"{print $4}'|cut -d '/' -f 1)";
+    iface = "#(ip -4 -o a|awk '$2!=\"lo\"{print $2}')";
+    dir_totsize = dirpath: "#(du -hs ${dirpath} 2>/dev/null|awk '{print $1}')";
+    mem_usage = opts: key: let
+      cmd = "free ${opts}|grep \"${key}\"";
+    in "#(${cmd}|awk '{print $3}')/#(${cmd}|awk '{print $2}')";
+  };
 
   tmuxstyle = {fg ? null, bg ? null, add ? null, ...}: builtins.concatStringsSep ","
     ((if (builtins.isNull fg) then [] else [ "fg=${col fg}" ]) ++
@@ -19,17 +27,6 @@ in with colorstool; rec {
     style = if all_styles == "" then "" else "#[${all_styles}]";
   in
     style + txt;
-
-  statusbar = {
-    disk_usage = " #(df -l|grep -e \"/$\"|awk -F ' ' '{print $5}')";
-    connected = "#(if ping -c 1 1.1.1.1 2>/dev/null 1>/dev/null; then echo ''; else echo ''; fi)";
-    int_ip= "#(ip -4 -o a|awk '$2!=\"lo\"{print $4}'|cut -d '/' -f 1)";
-    iface = "#(ip -4 -o a|awk '$2!=\"lo\"{print $2}')";
-    dir_totsize = dirpath: "#(du -hs ${dirpath} 2>/dev/null|awk '{print $1}')";
-    mem_usage = opts: key: let
-      cmd = "free ${opts}|grep \"${key}\"";
-    in "#(${cmd}|awk '{print $3}')/#(${cmd}|awk '{print $2}')";
-  };
 
   sidebar = {char, left}: content_list: let
     sepchar = col0: col1: if !left
@@ -52,19 +49,7 @@ in with colorstool; rec {
     in
       res.acc + (if left then sepchar "default" last.bg else "");
 
-  # TODO    Do something with the "exec" param
-  default_tmux_config = {
-    enable = false;
-    notheme = false;
-    vars_overwrite = {};
-    theme_overwrite = vars: {};
-    configs_files = [];
-    config_extra = "";
-    exec = "${pkgs.bashInteractive}/bin/bash";
-    tmuxp_session = null;
-  };
-
-  generate_config = { name, tmux, colors, ... }: with tmux; let
+  generate_config = tmux: { name, colors, ... }: with tmux; with colorstool; let
     generate_theme = theme: builtins.concatStringsSep "\n" (
       lib.attrsets.mapAttrsToList (name: cnt:
       "set -g ${name} \"${builtins.toString cnt}\""
@@ -153,6 +138,7 @@ in with colorstool; rec {
     tmux_other_configs = pkgs.writeTextFile {
       name = "tmux_${name}_configs.conf";
       text = ''
+        set -g default-command "${pkgs.bashInteractive}/bin/bash -i"
         set -g default-terminal "tmux-256color"
         set -ga terminal-overrides ",*256col*:Tc"
         set -g @plugin 'nhdaly/tmux-better-mouse-mode'
@@ -166,32 +152,45 @@ in with colorstool; rec {
     ] ++ configs_files;
   };
 
-  # Generate a tmux session isolated from the global system one, with the custom configuration
-  generate_command = { name, tmux_config, tmuxp_session, ... }: if builtins.isNull tmuxp_session
-    then "${tmux} -L \"${name}\" -f \"${tmux_config}\""
-    else "${tmuxp} load -L \"${name}\" -f \"${tmux_config}\" -y -s \"${name}\" -2 ${tmuxp_session}";
+  # TODO   Do something with the "cmd" param
+  # TODO   Generate tmuxp session from nix config instead of file
+  generate_command = { name, tmux_config, config_file, cmd, ... }: let
+    tmux_bin = "${tmux_config.tmux_package}/bin/tmux";
+    tmuxp_bin = "${tmux_config.tmuxp_package}/bin/tmuxp";
+  in if builtins.isNull tmux_config.tmuxp_session
+    then "${tmux_bin} -L \"${name}\" -u -f \"${config_file}\""
+    else "${tmuxp_bin} load -L \"${name}\" -f \"${config_file}\" -y -s \"${name}\" -2 ${tmux_config.tmuxp_session}";
 
-  extra = { name, ... }: {
-    init_script = ''
-      echo "source ~/.bashrc" > ~/.profile
-    '';
-    exit_script = "";
+  default_tmux_config = {
+    enable = false;
+    notheme = false;
+    vars_overwrite = {};
+    theme_overwrite = vars: {};
+    configs_files = [];
+    config_extra = "";
+    exec = "${pkgs.bashInteractive}/bin/bash -i";
+    tmuxp_session = null;
+    tmux_package = pkgs.tmux;
+    tmuxp_package = pkgs.tmuxp;
+  };
+in {
+  build = { name, tmux ? {}, ...}@cfg: let
+    tmux_config = lib.attrsets.recursiveUpdate default_tmux_config tmux;
+    tmux_bin = "${tmux_config.tmux_package}/bin/tmux";
+  in {
+    inherit (tmux_config) enable;
 
-    bashrc = ''
+    start_command = cmd: generate_command {
+      inherit name cmd tmux_config;
+      config_file = generate_config tmux_config cfg;
+    };
+
+    add_bashrc = ''
       quit() {
-        ${tmux} -L "${name}" kill-server;
-      }
-
-      reload() {
-        if [ $# -eq 1 ]; then
-          CFG="$1"
-        else
-          echo "Usage: $0 <config file>"
-          exit 1;
-        fi
-
-        ${tmux} -L "${name}" source-file $CFG;
+        ${tmux_bin} -L "${name}" kill-server;
       }
     '';
   };
+
+  inherit statusbar tmuxstyle tmuxfmts;
 }

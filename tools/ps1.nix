@@ -1,4 +1,4 @@
-{ pkgs, ...}@args: let
+{ ... }@args: let
   colorstool = import ./colors.nix args;
 
   create_ps1_element = with colorstool; {

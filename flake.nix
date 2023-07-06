@@ -1,10 +1,12 @@
 {
-  description = "Collection of usefull nix shells";
+  description = "Nix-powered tailored shells sandboxed using bubblewrap";
 
   inputs = {
-    flake-utils.url = "github:numtide/flake-utils";
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-22.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    helix.url = "github:helix-editor/helix";
+
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
@@ -16,15 +18,6 @@
       inherit system;
     };
     lib = pkgs.lib;
-    mkApp = exec: args: let
-    in {
-      type = "app";
-      program = if args == [] then "${exec}" else let
-        exec_with_args = pkgs.writeShellScript "mkAppWithArgs" ''
-          ${exec} ${builtins.concatStringsSep " " args} $@
-        '';
-      in "${exec_with_args}";
-    };
 
     # Gets the base name of a file without the extension, from a path
     name_from_fname = fname :
@@ -37,27 +30,9 @@
 
     tools_args = {
       inherit pkgs pkgs_unstable;
+      nixos_version = "23.05";
+      nixpkgs_rev = "c7a18f89ef1dc423f57f3de9bd5d9355550a5d15"; # For runtime package add
       lib = pkgs.lib;
-    };
-
-    shelltool = import ./tools/generate_shell.nix tools_args;
-    shellArgs = {
-      inherit inputs;
-      inherit system;
-      inherit pkgs;
-      inherit pkgs_unstable;
-      colorstool = import ./tools/colors.nix tools_args;
-      tmuxtool = import ./tools/tmux.nix tools_args;
-      ps1tool = import ./tools/ps1.nix tools_args;
-    };
-
-    mapShellScript = mapfct: override: f: mapfct (shelltool.mkShell
-      (lib.attrsets.recursiveUpdate (import f shellArgs) override)
-    );
-    genShellApp = mapShellScript (shell: mkApp "${shell}" []);
-    genShellNV = f: {
-      name = name_from_fname f;
-      value = genShellApp {} f;
     };
 
     find_all_files = dir: lib.lists.flatten (
@@ -73,33 +48,82 @@
         )
       );
 
-    shixbin = pkgs.writeShellScriptBin "shix" (builtins.readFile ./shix.sh);
-  in {
-    apps = builtins.listToAttrs (builtins.map genShellNV (find_all_files ./shells)) // {
-      shix = mkApp "${shixbin}/bin/shix" [];
+    all_shells = find_all_files ./shells;
 
-      compose = let
-        try_load = env: if (builtins.getEnv env) != ""
-          then builtins.getEnv env
-          else builtins.throw "Envionment variable ${env} must be set for a composition";
-        cfgA = import (try_load "SHIXCOMP_A") shellArgs;
-        cfgB = import (try_load "SHIXCOMP_B") shellArgs;
-        shell = shelltool.mkShell (lib.recursiveUpdate cfgA cfgB);
-      in mkApp "${shell}" [];
+    shelltool = import ./tools/generate_shell.nix tools_args;
+    bashtool = import ./tools/bash.nix tools_args;
+    tmuxtool = import ./tools/tmux.nix tools_args;
+    shellArgs = {
+      inherit pkgs pkgs_unstable lib system inputs bashtool tmuxtool;
+      colorstool = import ./tools/colors.nix tools_args;
+      ps1tool = import ./tools/ps1.nix tools_args;
     };
+
+    bwrap_lib = import ./tools/bwrap.nix { inherit pkgs lib; };
+    mkShell = file: let
+      data = import file shellArgs;
+      tmux_data = tmuxtool.build data;
+      bash_data = bashtool.build tmux_data.add_bashrc data;
+      start_cmd = shelltool.mkShell bash_data tmux_data data;
+      bwrap_args_list = bwrap_lib.get_args {
+        inherit bash_data tmux_data;
+      } data;
+      bwrap_args = builtins.concatStringsSep " " bwrap_args_list;
+    in pkgs.writeShellScript "${name_from_fname file}-shell" ''
+      set -x
+      echo ""
+      if ! [ -d ${data.homeDir} ]; then
+        mkdir -p ${data.homeDir}
+      fi
+      ${pkgs.bubblewrap}/bin/bwrap ${bwrap_args} -- ${start_cmd}
+    '';
+
+    shixbin = import ./shix_script.nix { inherit pkgs lib; };
+  in {
+    apps = builtins.listToAttrs (builtins.map (f: {
+      name = name_from_fname f;
+      value = { type = "app"; program = "${mkShell f}"; };
+    }) all_shells);
 
     overlays.default = self: super: {
       lib = super.lib // {
-        shix = {
-          mkShix = genShellApp;
-          mkShixMerge = mkApp "${shixbin}/bin/shix" [ "compose" ];
-          mkShixCompose = base: mkApp "${shixbin}/bin/shix" ["compose" "${builtins.toPath base}"];
-        };
+        shix = { inherit mkShell; };
       };
     };
 
-    nixosModules.default = {
-      config.environment.systemPackages = [ shixbin pkgs.git ];
+    nixosModules.default = { lib, config, ...}: {
+      options.shix = {
+        remoteRepoUrl = lib.mkOption {
+          type = lib.types.str;
+          description = "Remote repository where the shells are stored";
+          default = "git@github.com:litchipi/shix.git";
+        };
+
+        pushAfterEditing = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Push to remote repository after each shell edition";
+        };
+
+        pullBeforeEditing = lib.mkOption {
+          type = lib.types.bool;
+          default = true;
+          description = "Pull from remote repository before each shell edition";
+        };
+
+        baseDir = lib.mkOption {
+          type = lib.types.str;
+          description = "Base dir where to store shells";
+          default = "$HOME/.local/share/shix";
+        };
+
+        shellEditCommand = lib.mkOption {
+          type = lib.types.str;
+          default = "$EDITOR";
+          description = "Command to use to open and edit a shell";
+        };
+      };
+      config.environment.systemPackages = [ (shixbin config.shix) ];
     };
   });
 }

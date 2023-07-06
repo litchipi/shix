@@ -1,5 +1,4 @@
-{ pkgs, lib, ...}@args: let
-
+{ lib, ...}: let
   pow =
     let
       pow' = base: exponent: value:
@@ -66,8 +65,7 @@ in rec {
   };
 
   escape_code = ''\033['';
-  ansi = { r, g, b }: with builtins;
-    escape_code + ''38;2;${toString r};${toString g};${toString b}m'';
+  ansi = { r, g, b }: escape_code + ''38;2;${toString r};${toString g};${toString b}m'';
   reset = escape_code + "0m";
 
   style = {

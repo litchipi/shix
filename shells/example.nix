@@ -2,37 +2,31 @@
   # Name of the shell
   name = "ShixExample";
 
+  # Directory that will be mounted as $HOME
+  homeDir = "/tmp/temporary_home";
+
   # The color palette that will be used for generated themes
   colors = {
     primary = {r=255; g=0; b=0;};
     secondary = {r=0; g=255; b=0;};
-    tertiary = {r=0; g=0; b=255;};
+    tertiary = {r=255; g=255; b=255;};
     highlight = {r=0; g=255; b=255;};
     active = {r=255; g=255; b=0;};
     inactive = {r=128; g=128; b=0;};
   };
 
-  # Where to place the directories for
-  dirs.paths.home = "/tmp/my_new_temporary_home";    # The home directory (can be temporary)
-  dirs.paths.data = "/tmp/some_persistent_storage";  # The data directory (should be persistent)
-
-  # Create symlinks by directly linking the source to the destination
-  dirs.symLinks.direct = {
-    # Destination   Source
-    "other/tmp" = "/tmp/";
-
-    awesome_nix = pkgs.fetchFromGitHub {
+  # Create a symlink inside the environment
+  binds.symlinks = {
+    # From anything in the nix store
+    "awesome_nix" = pkgs.fetchFromGitHub {
       owner = "nix-community";
       repo = "awesome-nix";
       rev = "5e09d94eba14282976bcb343a9392fe54d7a310c";
       sha256 = "sha256-y3CgwyC0A7X6SZRu8hogOrvcfYlwa+M9OuViYa/zRas=";
     };
-  };
 
-  # Create symlinks by linking every directory inside the source in the destination
-  dirs.symLinks.dirs_inside = {
-    # Destination   Source
-    "other/var" = "/var/";
+    # Or in your filesystem tree
+    "other/tmp" = "/tmp";
   };
 
   # Add packages to the shell
@@ -40,13 +34,10 @@
     neo-cowsay
   ];
 
-  # Set up some libraies for the shell
-  libraries = {
-    # Added to PKG_CONFIG_PATH var
-    pkgconfig = []; #openssl for example
-    vars = {
-      # LIBCLANG_PATH = pkgs.libclang for example
-    };
+  shell.pkgconfig_libs = [ ]; # Added to PKG_CONFIG_PATH
+
+  env_vars = {
+    EXEMPLE_SHELL = "1";
   };
 
   # Custom aliases / scripts that are set for this shell
@@ -54,12 +45,12 @@
     cow = "cowsay \"$@\"";
 
     readnotes = ''
-      touch $HOME/data/notes
-      tail +1f $HOME/data/notes
+      touch $HOME/.notes
+      tail +1f $HOME/.notes
     '';
 
     note = ''
-      echo -e "$@\n" >> $HOME/data/notes
+      echo -e "$@\n" >> $HOME/.notes
       echo -e "${style.bold}${ansi colors.primary}Saved${reset}"
     '';
   };
@@ -90,6 +81,10 @@
   # Spawning a custom tmux when creating the shell
   tmux = {
     enable = true;
+    # configs_files = [
+    #   /path/to/my/tmux.conf
+    #  (pkgs.fetchurl { url = "http://url/to/my/tmux.conf", ... })
+    # ];
 
     # Overwrite the theme of some elements of the global tmux configuration
     theme_overwrite = vars: {
@@ -98,6 +93,7 @@
         { txt = "#W"; fg=colors.primary; add="bold"; }
         { txt = " $"; fg=colors.highlight; add="nobold"; }
       ];
+
       "window-status-bell-style" = tmuxtool.tmuxstyle { fg = colorstool.basic.white; };
       "window-status-activity-style" = tmuxtool.tmuxstyle { fg = colorstool.basic.white; };
     };
