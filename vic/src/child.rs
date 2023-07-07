@@ -30,12 +30,12 @@ fn child(config: ContainerOpts) -> isize {
     }
 
     log::info!(
-        "Starting container with command {} and args {:?}",
-        config.path.to_str().unwrap(),
-        config.argv
+        "Starting container with script {:?}", 
+        config.script,
     );
 
-    match execve::<CString, CString>(&config.path, &config.argv, &[]) {
+    let script : CString = CString::new(config.script.to_str().unwrap()).unwrap();
+    match execve::<CString, CString>(&script, &[script.clone()], &[]) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("Error while trying to perform execve: {:?}", e);
@@ -61,6 +61,9 @@ pub fn generate_child_process(config: ContainerOpts) -> Result<Pid, Errcode> {
         Some(Signal::SIGCHLD as i32),
     ) {
         Ok(pid) => Ok(pid),
-        Err(_) => Err(Errcode::ChildProcessError(0)),
+        Err(e) => {
+            log::error!("Error cloning the process: {e:?}");
+            Err(Errcode::ChildProcessError(0))
+        },
     }
 }

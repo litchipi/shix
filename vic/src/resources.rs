@@ -9,6 +9,7 @@ use rlimit::{setrlimit, Resource};
 use std::convert::TryInto;
 use std::fs::{canonicalize, remove_dir};
 
+const CPU_SHARES: u64 = 256;
 //                      K       M       G
 const KMEM_LIMIT: i64 = 1024 * 1024 * 1024;
 const MEM_LIMIT: i64 = KMEM_LIMIT;
@@ -20,18 +21,22 @@ pub fn restrict_resources(hostname: &String, pid: Pid) -> Result<(), Errcode> {
 
     let cgs = CgroupBuilder::new(hostname)
         .cpu()
-        .shares(256)
+        .shares(CPU_SHARES)
         .done()
+
         .memory()
         .kernel_memory_limit(KMEM_LIMIT)
         .memory_hard_limit(MEM_LIMIT)
         .done()
+
         .pid()
         .maximum_number_of_processes(MAX_PID)
         .done()
+
         .blkio()
         .weight(50)
         .done()
+
         .build(Box::new(V2::new()));
 
     let pid: u64 = pid.as_raw().try_into().unwrap();

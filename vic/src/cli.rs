@@ -1,6 +1,5 @@
 use crate::errors::Errcode;
 
-use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -11,21 +10,14 @@ pub struct Args {
     #[structopt(short, long)]
     debug: bool,
 
-    /// Command to execute inside the container
+    /// Configuration file for the container
     #[structopt(short, long)]
-    pub command: String,
+    pub config_file: std::path::PathBuf,
 
-    /// User ID to create inside the container
+    /// Script to execute inside the container
     #[structopt(short, long)]
-    pub uid: u32,
+    pub script: std::path::PathBuf,
 
-    /// Directory to mount as root of the container
-    #[structopt(parse(from_os_str), short = "m", long = "mount")]
-    pub mount_dir: PathBuf,
-
-    /// Mount a directory inside the container
-    #[structopt(parse(from_os_str), short = "a", long = "add")]
-    pub addpaths: Vec<PathBuf>,
 }
 
 pub fn parse_args() -> Result<Args, Errcode> {
@@ -35,14 +27,6 @@ pub fn parse_args() -> Result<Args, Errcode> {
         setup_log(log::LevelFilter::Debug);
     } else {
         setup_log(log::LevelFilter::Info);
-    }
-
-    if !args.mount_dir.exists() || !args.mount_dir.is_dir() {
-        return Err(Errcode::ArgumentInvalid("mount"));
-    }
-
-    if args.command.is_empty() {
-        return Err(Errcode::ArgumentInvalid("command"));
     }
 
     Ok(args)

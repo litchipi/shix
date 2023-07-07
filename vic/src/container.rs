@@ -9,42 +9,25 @@ use nix::sys::utsname::uname;
 use nix::sys::wait::waitpid;
 use nix::unistd::Pid;
 
-use std::path::PathBuf;
-
 pub struct Container {
     config: ContainerOpts,
-    child_pid: Option<Pid>,
 }
 
 impl Container {
     pub fn new(args: Args) -> Result<Container, Errcode> {
-        let mut addpaths = vec![];
-        for ap_pair in args.addpaths.iter() {
-            let mut pair = ap_pair.to_str().unwrap().split(':');
-            let frompath = PathBuf::from(pair.next().unwrap())
-                .canonicalize()
-                .expect("Cannot canonicalize path")
-                .to_path_buf();
-            let mntpath = PathBuf::from(pair.next().unwrap())
-                .strip_prefix("/")
-                .expect("Cannot strip prefix from path")
-                .to_path_buf();
-            addpaths.push((frompath, mntpath));
-        }
-        let config = ContainerOpts::new(args.command, args.uid, args.mount_dir, addpaths)?;
-
+        let mut config = ContainerOpts::from_file(&args.config_file)?;
+        config.script = args.script;
+        config.validate()?;
         Ok(Container {
             config,
-            child_pid: None,
         })
     }
 
-    pub fn create(&mut self) -> Result<(), Errcode> {
+    pub fn create(&mut self) -> Result<Pid, Errcode> {
         let pid = generate_child_process(self.config.clone())?;
         restrict_resources(&self.config.hostname, pid)?;
-        self.child_pid = Some(pid);
         log::debug!("Creation finished");
-        Ok(())
+        Ok(pid)
     }
 
     pub fn clean_exit(&mut self) -> Result<(), Errcode> {
@@ -84,24 +67,26 @@ pub fn check_linux_version() -> Result<(), Errcode> {
 pub fn start(args: Args) -> Result<(), Errcode> {
     check_linux_version()?;
     let mut container = Container::new(args)?;
-    if let Err(e) = container.create() {
-        container.clean_exit()?;
-        log::error!("Error while creating container: {:?}", e);
-        return Err(e);
+    match container.create() {
+        Err(e) => {
+            log::error!("Error while creating container: {:?}", e);
+            container.clean_exit()?;
+            Err(e)
+        },
+        Ok(pid) => {
+            log::debug!("Container child PID: {:?}", pid);
+            wait_child(pid)?;
+            log::debug!("Finished, cleaning & exit");
+            container.clean_exit()
+        }
     }
-    log::debug!("Container child PID: {:?}", container.child_pid);
-    wait_child(container.child_pid)?;
-    log::debug!("Finished, cleaning & exit");
-    container.clean_exit()
 }
 
-pub fn wait_child(pid: Option<Pid>) -> Result<(), Errcode> {
-    if let Some(child_pid) = pid {
-        log::debug!("Waiting for child (pid {}) to finish", child_pid);
-        if let Err(e) = waitpid(child_pid, None) {
-            log::error!("Error while waiting for pid to finish: {:?}", e);
-            return Err(Errcode::ContainerError(1));
-        }
+pub fn wait_child(child_pid: Pid) -> Result<(), Errcode> {
+    log::debug!("Waiting for child (pid {}) to finish", child_pid);
+    if let Err(e) = waitpid(child_pid, None) {
+        log::error!("Error while waiting for pid to finish: {:?}", e);
+        return Err(Errcode::ContainerError(1));
     }
     Ok(())
 }

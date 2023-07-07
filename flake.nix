@@ -77,11 +77,15 @@
     '';
 
     shixbin = import ./shix_script.nix { inherit pkgs lib; };
+
+    vic_script = import ./vic/script.nix { inherit pkgs lib; };
   in {
-    apps = builtins.listToAttrs (builtins.map (f: {
+    apps = (builtins.listToAttrs (builtins.map (f: {
       name = name_from_fname f;
       value = { type = "app"; program = "${mkShell f}"; };
-    }) all_shells);
+    }) all_shells)) // {
+      vic = { type = "app"; program = "${vic_script}"; };
+    };
 
     overlays.default = self: super: {
       lib = super.lib // {
@@ -122,6 +126,10 @@
         };
       };
       config.environment.systemPackages = [ (shixbin config.shix) ];
+    };
+
+    devShells.default = pkgs.mkShell {
+      PKG_CONFIG_PATH="${pkgs.libseccomp.dev}/lib/pkgconfig";
     };
   });
 }

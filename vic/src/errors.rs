@@ -6,7 +6,8 @@ use crate::container::MINIMAL_KERNEL_VERSION;
 #[derive(Debug)]
 // Contains all possible errors in our tool
 pub enum Errcode {
-    ArgumentInvalid(&'static str),
+    InvalidConfig(&'static str),
+    LoadConfigFile(String),
     NotSupported(u8),
     ContainerError(u8),
     ChildProcessError(u8),
@@ -15,7 +16,7 @@ pub enum Errcode {
     CapabilitiesError(u8),
     SyscallsError(u8),
     ResourcesError(u8),
-    RngError,
+    // RngError,
 }
 
 impl Errcode {
@@ -44,7 +45,7 @@ impl fmt::Display for Errcode {
             },
 
             // Message to display when an argument is invalid
-            Errcode::ArgumentInvalid(element) => write!(f, "ArgumentInvalid: {}", element),
+            Errcode::InvalidConfig(element) => write!(f, "ArgumentInvalid: {}", element),
 
             _ => write!(f, "{:?}", self), // For any variant not previously covered
         }

@@ -12,6 +12,7 @@ mod hostname;
 mod mounts;
 mod resources;
 mod syscalls;
+mod add_paths;
 
 use errors::exit_with_retcode;
 

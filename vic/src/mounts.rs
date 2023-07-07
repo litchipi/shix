@@ -1,6 +1,9 @@
+use crate::add_paths::AddPath;
 use crate::errors::Errcode;
 
 use std::path::PathBuf;
+
+// TODO    Set /host mountpoint as a constant / config var
 
 //https://rust-lang-nursery.github.io/rust-cookbook/algorithms/randomness.html
 use rand::Rng;
@@ -82,12 +85,41 @@ pub fn mount_directory(
     }
 }
 
+pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
+    let src: PathBuf = if src.starts_with("/") {
+        src.strip_prefix("/").unwrap().into()
+    } else {
+        src.clone()
+    };
+    let src = PathBuf::from("/host").join(&src);
+
+    if dst.exists() {
+        // TODO    Option remove if exist
+        panic!(
+            "Unable to create symlink {dst:?} from {:?}, file exists",
+            src
+        );
+    }
+    if let Some(p) = dst.parent() {
+        if let Err(e) = std::fs::create_dir_all(p) {
+            log::error!("Unable to create parent directory: {e:?}");
+            return Err(Errcode::MountsError(6));
+        }
+    }
+    log::debug!("Symlink {:?} will point to -> {:?} (before pivot)", dst, src);
+    if let Err(e) = nix::unistd::symlinkat(&src, None, dst) {
+        log::error!("Unable to create symlink: {e:?}");
+        return Err(Errcode::MountsError(7));
+    }
+    Ok(())
+}
+
 use nix::mount::{mount, umount2, MntFlags, MsFlags};
 use nix::unistd::{chdir, pivot_root};
 use std::fs::remove_dir;
 pub fn setmountpoint(
     mount_dir: &PathBuf,
-    addpaths: &Vec<(PathBuf, PathBuf)>,
+    addpaths: &Vec<AddPath>,
 ) -> Result<(), Errcode> {
     log::debug!("Setting mount points ...");
     mount_directory(
@@ -109,31 +141,21 @@ pub fn setmountpoint(
     )?;
 
     log::debug!("Mounting additionnal paths");
-    for (inpath, mntpath) in addpaths.iter() {
-        let outpath = new_root.join(mntpath);
-        create_directory(&outpath)?;
-        mount_directory(
-            Some(inpath),
-            &outpath,
-            vec![MsFlags::MS_PRIVATE, MsFlags::MS_BIND],
-        )?;
+    for p in addpaths.iter() {
+        p.add_to_root(&new_root)?;
     }
 
     log::debug!("Pivoting root");
-    let old_root_tail = format!("oldroot.{}", random_string(6));
-    let put_old = new_root.join(PathBuf::from(old_root_tail.clone()));
+    let put_old = new_root.join("host");
     create_directory(&put_old)?;
     if pivot_root(&new_root, &put_old).is_err() {
         return Err(Errcode::MountsError(4));
     }
 
     log::debug!("Unmounting old root");
-    let old_root = PathBuf::from(format!("/{}", old_root_tail));
     if chdir(&PathBuf::from("/")).is_err() {
         return Err(Errcode::MountsError(5));
     }
-    unmount_path(&old_root)?;
-    delete_dir(&old_root)?;
     Ok(())
 }
 
