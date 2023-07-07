@@ -2,7 +2,7 @@ use crate::child::generate_child_process;
 use crate::cli::Args;
 use crate::config::ContainerOpts;
 use crate::errors::Errcode;
-use crate::mounts::clean_mounts;
+use crate::mounts::clean_paths;
 use crate::resources::{clean_cgroups, restrict_resources};
 
 use nix::sys::utsname::uname;
@@ -32,7 +32,9 @@ impl Container {
 
     pub fn clean_exit(&mut self) -> Result<(), Errcode> {
         log::debug!("Cleaning container");
-        clean_mounts(&self.config.mount_dir)?;
+        for p in self.config.addpaths.iter() {
+            p.clean()?;
+        }
 
         if let Err(e) = clean_cgroups(&self.config.hostname) {
             log::error!("Cgroups cleaning failed: {}", e);

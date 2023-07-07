@@ -1,4 +1,4 @@
-use crate::{errors::Errcode, mounts::{create_directory, mount_directory, create_symlink}};
+use crate::{errors::Errcode, mounts::{create_directory, mount_directory, create_symlink, unmount_path}};
 use nix::mount::MsFlags;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -53,17 +53,25 @@ impl AddPath {
                     if exceptions.contains(&path) {
                         continue;
                     }
-                    log::debug!("Destination: {dst:?}");
                     let dst = if path.is_symlink() {
                         dst.join(fname)
                     } else {
                         dst.join(path.strip_prefix(&self.src).unwrap())
                     };
-                    log::debug!("{path:?} -> {:?}", dst);
                     create_symlink(&path, &dst)?;
                 }
             },
             AddPathType::Copy => { std::fs::copy(&self.src, &dst).unwrap(); },
+        }
+        Ok(())
+    }
+
+    // TODO    Clean safely here
+    pub fn clean(&self) -> Result<(), Errcode> {
+        match &self.path_type {
+            AddPathType::Mount { .. } => {
+            }
+            _ => {},
         }
         Ok(())
     }

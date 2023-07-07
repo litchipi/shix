@@ -4,6 +4,7 @@ use crate::errors::Errcode;
 use std::path::PathBuf;
 
 // TODO    Set /host mountpoint as a constant / config var
+// TODO    remove /tmp/crabcan.XXXXX after use
 
 //https://rust-lang-nursery.github.io/rust-cookbook/algorithms/randomness.html
 use rand::Rng;
@@ -24,13 +25,15 @@ pub fn random_string(n: usize) -> String {
 }
 
 pub fn unmount_path(path: &PathBuf) -> Result<(), Errcode> {
-    match umount2(path, MntFlags::MNT_DETACH) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            log::error!("Unable to umount {}: {}", path.to_str().unwrap(), e);
-            Err(Errcode::MountsError(0))
-        }
-    }
+    log::debug!("UNMOUNT {path:?}");
+    // match umount2(path, MntFlags::MNT_DETACH) {
+    //     Ok(_) => Ok(()),
+    //     Err(e) => {
+    //         log::error!("Unable to umount {}: {}", path.to_str().unwrap(), e);
+    //         Err(Errcode::MountsError(0))
+    //     }
+    // }
+    Ok(())
 }
 
 pub fn delete_dir(path: &PathBuf) -> Result<(), Errcode> {
@@ -106,7 +109,6 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
             return Err(Errcode::MountsError(6));
         }
     }
-    log::debug!("Symlink {:?} will point to -> {:?} (before pivot)", dst, src);
     if let Err(e) = nix::unistd::symlinkat(&src, None, dst) {
         log::error!("Unable to create symlink: {e:?}");
         return Err(Errcode::MountsError(7));
@@ -159,7 +161,14 @@ pub fn setmountpoint(
     Ok(())
 }
 
-pub fn clean_mounts(_rootpath: &PathBuf) -> Result<(), Errcode> {
-    //unmount_path(&rootpath)?;
+pub fn clean_paths(add_paths: &Vec<AddPath>) -> Result<(), Errcode> {
+    let paths = std::fs::read_dir("/").unwrap();
+    for path in paths {
+        println!("{}", path.unwrap().path().display());
+    }
+
+    for path in add_paths.iter() {
+        path.clean()?;
+    }
     Ok(())
 }
