@@ -4,7 +4,6 @@ use std::process::exit;
 mod errors;
 mod cli;
 mod container;
-mod ipc;
 mod config;
 mod child;
 mod hostname;

@@ -5,7 +5,7 @@ use crate::mounts::setmountpoint;
 use crate::capabilities::setcapabilities;
 use crate::syscalls::setsyscalls;
 
-use nix::unistd::{Pid, close, execve};
+use nix::unistd::{Pid, execve};
 use nix::sched::clone;
 use nix::sys::signal::Signal;
 use nix::sched::CloneFlags;
@@ -27,11 +27,6 @@ fn child(config: ContainerOpts) -> isize {
             log::error!("Error while configuring container: {:?}", e);
             return -1;
         }
-    }
-
-    if let Err(_) = close(config.fd){
-        log::error!("Error while closing socket ...");
-        return -1;
     }
 
     log::info!("Starting container with command {} and args {:?}", config.path.to_str().unwrap(), config.argv);

@@ -6,15 +6,12 @@ use crate::resources::{restrict_resources, clean_cgroups};
 use crate::mounts::clean_mounts;
 
 use nix::unistd::Pid;
-use nix::unistd::close;
 use nix::sys::wait::waitpid;
 use nix::sys::utsname::uname;
 
-use std::os::unix::io::RawFd;
 use std::path::PathBuf;
 
 pub struct Container{
-    sockets: (RawFd, RawFd),
     config: ContainerOpts,
     child_pid: Option<Pid>,
 }
@@ -32,14 +29,13 @@ impl Container {
                 .to_path_buf();
             addpaths.push((frompath, mntpath));
         }
-        let (config, sockets) = ContainerOpts::new(
+        let config = ContainerOpts::new(
                 args.command,
                 args.uid,
                 args.mount_dir,
                 addpaths)?;
 
         Ok(Container {
-            sockets,
             config,
             child_pid: None,
         })
@@ -56,16 +52,6 @@ impl Container {
     pub fn clean_exit(&mut self) -> Result<(), Errcode>{
         log::debug!("Cleaning container");
         clean_mounts(&self.config.mount_dir)?;
-
-        if let Err(e) = close(self.sockets.0){
-            log::error!("Unable to close write socket: {:?}", e);
-            return Err(Errcode::SocketError(3));
-        }
-
-        if let Err(e) = close(self.sockets.1){
-            log::error!("Unable to close read socket: {:?}", e);
-            return Err(Errcode::SocketError(4));
-        }
 
         if let Err(e) = clean_cgroups(&self.config.hostname){
             log::error!("Cgroups cleaning failed: {}", e);
@@ -101,7 +87,6 @@ pub fn check_linux_version() -> Result<(), Errcode> {
 pub fn start(args: Args) -> Result<(), Errcode> {
     check_linux_version()?;
     let mut container = Container::new(args)?;
-    log::debug!("Container sockets: ({}, {})", container.sockets.0, container.sockets.1);
     if let Err(e) = container.create(){
         container.clean_exit()?;
         log::error!("Error while creating container: {:?}", e);
