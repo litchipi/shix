@@ -1,17 +1,17 @@
-use crate::cli::Args;
-use crate::errors::Errcode;
-use crate::config::ContainerOpts;
 use crate::child::generate_child_process;
-use crate::resources::{restrict_resources, clean_cgroups};
+use crate::cli::Args;
+use crate::config::ContainerOpts;
+use crate::errors::Errcode;
 use crate::mounts::clean_mounts;
+use crate::resources::{clean_cgroups, restrict_resources};
 
-use nix::unistd::Pid;
-use nix::sys::wait::waitpid;
 use nix::sys::utsname::uname;
+use nix::sys::wait::waitpid;
+use nix::unistd::Pid;
 
 use std::path::PathBuf;
 
-pub struct Container{
+pub struct Container {
     config: ContainerOpts,
     child_pid: Option<Pid>,
 }
@@ -19,21 +19,19 @@ pub struct Container{
 impl Container {
     pub fn new(args: Args) -> Result<Container, Errcode> {
         let mut addpaths = vec![];
-        for ap_pair in args.addpaths.iter(){
-            let mut pair = ap_pair.to_str().unwrap().split(":");
+        for ap_pair in args.addpaths.iter() {
+            let mut pair = ap_pair.to_str().unwrap().split(':');
             let frompath = PathBuf::from(pair.next().unwrap())
-                .canonicalize().expect("Cannot canonicalize path")
+                .canonicalize()
+                .expect("Cannot canonicalize path")
                 .to_path_buf();
             let mntpath = PathBuf::from(pair.next().unwrap())
-                .strip_prefix("/").expect("Cannot strip prefix from path")
+                .strip_prefix("/")
+                .expect("Cannot strip prefix from path")
                 .to_path_buf();
             addpaths.push((frompath, mntpath));
         }
-        let config = ContainerOpts::new(
-                args.command,
-                args.uid,
-                args.mount_dir,
-                addpaths)?;
+        let config = ContainerOpts::new(args.command, args.uid, args.mount_dir, addpaths)?;
 
         Ok(Container {
             config,
@@ -49,11 +47,11 @@ impl Container {
         Ok(())
     }
 
-    pub fn clean_exit(&mut self) -> Result<(), Errcode>{
+    pub fn clean_exit(&mut self) -> Result<(), Errcode> {
         log::debug!("Cleaning container");
         clean_mounts(&self.config.mount_dir)?;
 
-        if let Err(e) = clean_cgroups(&self.config.hostname){
+        if let Err(e) = clean_cgroups(&self.config.hostname) {
             log::error!("Cgroups cleaning failed: {}", e);
             return Err(e);
         }
@@ -61,7 +59,6 @@ impl Container {
         Ok(())
     }
 }
-
 
 pub const MINIMAL_KERNEL_VERSION: f32 = 4.8;
 
@@ -87,7 +84,7 @@ pub fn check_linux_version() -> Result<(), Errcode> {
 pub fn start(args: Args) -> Result<(), Errcode> {
     check_linux_version()?;
     let mut container = Container::new(args)?;
-    if let Err(e) = container.create(){
+    if let Err(e) = container.create() {
         container.clean_exit()?;
         log::error!("Error while creating container: {:?}", e);
         return Err(e);
@@ -98,10 +95,10 @@ pub fn start(args: Args) -> Result<(), Errcode> {
     container.clean_exit()
 }
 
-pub fn wait_child(pid: Option<Pid>) -> Result<(), Errcode>{
+pub fn wait_child(pid: Option<Pid>) -> Result<(), Errcode> {
     if let Some(child_pid) = pid {
         log::debug!("Waiting for child (pid {}) to finish", child_pid);
-        if let Err(e) = waitpid(child_pid, None){
+        if let Err(e) = waitpid(child_pid, None) {
             log::error!("Error while waiting for pid to finish: {:?}", e);
             return Err(Errcode::ContainerError(1));
         }

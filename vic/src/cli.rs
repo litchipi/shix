@@ -31,13 +31,13 @@ pub struct Args {
 pub fn parse_args() -> Result<Args, Errcode> {
     let args = Args::from_args();
 
-    if args.debug{
+    if args.debug {
         setup_log(log::LevelFilter::Debug);
     } else {
         setup_log(log::LevelFilter::Info);
     }
 
-    if !args.mount_dir.exists() || !args.mount_dir.is_dir(){
+    if !args.mount_dir.exists() || !args.mount_dir.is_dir() {
         return Err(Errcode::ArgumentInvalid("mount"));
     }
 
@@ -48,7 +48,7 @@ pub fn parse_args() -> Result<Args, Errcode> {
     Ok(args)
 }
 
-pub fn setup_log(level: log::LevelFilter){
+pub fn setup_log(level: log::LevelFilter) {
     env_logger::Builder::from_default_env()
         .format_timestamp_secs()
         .filter(None, level)

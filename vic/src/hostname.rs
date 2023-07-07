@@ -1,17 +1,30 @@
 use crate::errors::Errcode;
 
-use rand::Rng;
 use rand::seq::SliceRandom;
+use rand::Rng;
 
-const HOSTNAME_NAMES: [&'static str; 8] = [
-    "cat", "world", "coffee", "girl",
-    "man", "book", "pinguin", "moon"];
+const HOSTNAME_NAMES: [&str; 8] = [
+    "cat", "world", "coffee", "girl", "man", "book", "pinguin", "moon",
+];
 
-const HOSTNAME_ADJ: [&'static str; 16] = [
-    "blue", "red", "green", "yellow",
-    "big", "small", "tall", "thin",
-    "round", "square", "triangular", "weird",
-    "noisy", "silent", "soft", "irregular"];
+const HOSTNAME_ADJ: [&str; 16] = [
+    "blue",
+    "red",
+    "green",
+    "yellow",
+    "big",
+    "small",
+    "tall",
+    "thin",
+    "round",
+    "square",
+    "triangular",
+    "weird",
+    "noisy",
+    "silent",
+    "soft",
+    "irregular",
+];
 
 pub fn generate_hostname() -> Result<String, Errcode> {
     let mut rng = rand::thread_rng();
@@ -23,11 +36,11 @@ pub fn generate_hostname() -> Result<String, Errcode> {
 
 use nix::unistd::sethostname;
 pub fn set_container_hostname(hostname: &String) -> Result<(), Errcode> {
-    match sethostname(hostname){
+    match sethostname(hostname) {
         Ok(_) => {
             log::debug!("Container hostname is now {}", hostname);
             Ok(())
-        },
+        }
         Err(_) => {
             log::error!("Cannot set hostname {} for container", hostname);
             Err(Errcode::HostnameError(0))
