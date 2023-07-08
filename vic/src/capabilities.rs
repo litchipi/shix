@@ -33,7 +33,6 @@ lazy_static! {
 }
 
 pub fn setcapabilities() -> Result<(), Errcode> {
-
     log::debug!("Clearing unwanted capabilities ...");
     if let Ok(mut caps) = FullCapState::get_current() {
         caps.bounding.drop_all(CAPABILITIES_DROP.iter().copied());

@@ -1,10 +1,10 @@
 use crate::add_paths::AddPath;
+use crate::config::ContainerOpts;
 use crate::errors::Errcode;
 
 use std::path::PathBuf;
 
 // TODO    Set /host mountpoint as a constant / config var
-// TODO    remove /tmp/crabcan.XXXXX after use
 
 use std::fs::create_dir_all;
 pub fn create_directory(path: &PathBuf) -> Result<(), Errcode> {
@@ -53,7 +53,7 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
     let src = PathBuf::from("/host").join(&src);
 
     if dst.exists() {
-        // TODO    Option remove if exist
+        // TODO    Option to remove if exist
         panic!(
             "Unable to create symlink {dst:?} from {:?}, file exists",
             src
@@ -74,12 +74,7 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
 
 use nix::mount::{mount, MsFlags};
 use nix::unistd::{chdir, pivot_root};
-pub fn setmountpoint(
-    new_root: &PathBuf,
-    root_mount_point: &PathBuf,
-    home_dir: &PathBuf,
-    addpaths: &Vec<AddPath>,
-) -> Result<(), Errcode> {
+pub fn setmountpoint(config: &ContainerOpts) -> Result<(), Errcode> {
     log::debug!("Setting mount points ...");
     mount_directory(
         None,
@@ -87,28 +82,39 @@ pub fn setmountpoint(
         vec![MsFlags::MS_REC, MsFlags::MS_PRIVATE],
     )?;
 
-    log::debug!("Mounting root mount point {root_mount_point:?} to new root {new_root:?}");
-    create_directory(&new_root)?;
-    create_directory(&root_mount_point)?;
+    log::debug!(
+        "Mounting root mount point {:?} to new root {:?}",
+        config.root_mount_point,
+        config.new_root
+    );
+    create_directory(&config.new_root)?;
+    create_directory(&config.root_mount_point)?;
     mount_directory(
-        Some(&root_mount_point),
-        &new_root,
+        Some(&config.root_mount_point),
+        &config.new_root,
         vec![MsFlags::MS_BIND, MsFlags::MS_PRIVATE],
     )?;
 
-    create_directory(&new_root.join("home"))?;
-    mount_directory(Some(home_dir), &new_root.join("home"), vec![MsFlags::MS_BIND])?;
+    create_directory(&config.new_root.join("home").join(&config.username))?;
+    mount_directory(
+        Some(&config.home_dir),
+        &config.new_root.join("home").join(&config.username),
+        vec![MsFlags::MS_BIND],
+    )?;
 
     log::debug!("Mounting additionnal paths");
-    for p in addpaths.iter() {
-        p.add_to_root(&new_root)?;
+    for p in config.addpaths.iter() {
+        p.add_to_root(&config.new_root)?;
     }
 
-    let put_old = new_root.join("host");
+    let put_old = config.new_root.join("host");
     create_directory(&put_old)?;
 
-    log::debug!("Pivoting root to {new_root:?}, putting old root in {put_old:?}");
-    if let Err(e) = pivot_root(new_root, &put_old) {
+    log::debug!(
+        "Pivoting root to {:?}, putting old root in {put_old:?}",
+        config.new_root
+    );
+    if let Err(e) = pivot_root(&config.new_root, &put_old) {
         log::error!("Error while pivoting root: {e:?}");
         return Err(Errcode::MountsError(4));
     }

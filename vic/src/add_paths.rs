@@ -1,14 +1,23 @@
 use crate::errors::Errcode;
-use crate::mounts::{create_directory, mount_directory, create_symlink};
+use crate::mounts::{create_directory, create_symlink, mount_directory};
 use nix::mount::MsFlags;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+const BASE_MNT_FLAGS: [MsFlags; 2] = [MsFlags::MS_PRIVATE, MsFlags::MS_BIND];
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MountFlag {
-    // TODO    Mount flags
     ReadOnly,
+}
+
+impl Into<MsFlags> for &MountFlag {
+    fn into(self) -> MsFlags {
+        match self {
+            MountFlag::ReadOnly => MsFlags::MS_RDONLY,
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -25,7 +34,7 @@ pub struct AddPath {
     pub src: PathBuf,
     pub dst: PathBuf,
     #[serde(rename = "type")]
-    path_type: AddPathType, 
+    path_type: AddPathType,
 }
 
 impl AddPath {
@@ -37,18 +46,16 @@ impl AddPath {
         }
     }
     pub fn add_to_root(&self, root: &PathBuf) -> Result<(), Errcode> {
-        // TODO    Trim the "/" prefix in dst to join
         let dst = self.get_root_dst(root);
         match &self.path_type {
-            AddPathType::Mount { .. } => {
+            AddPathType::Mount { flags } => {
+                let mut mnt_flags = Vec::from(BASE_MNT_FLAGS);
+                for f in flags.iter() {
+                    mnt_flags.push(f.into());
+                }
                 create_directory(&dst)?;
-                mount_directory(
-                    Some(&self.src),
-                    &dst,
-                    // TODO    Get flags from MountFlag Vec
-                    vec![MsFlags::MS_PRIVATE, MsFlags::MS_BIND],
-                )?;
-            },
+                mount_directory(Some(&self.src), &dst, mnt_flags)?;
+            }
             AddPathType::Symlink => create_symlink(&self.src, &self.dst)?,
             AddPathType::SymlinkDirContent { exceptions } => {
                 for path in std::fs::read_dir(&self.src).unwrap() {
@@ -64,8 +71,10 @@ impl AddPath {
                     };
                     create_symlink(&path, &dst)?;
                 }
-            },
-            AddPathType::Copy => { std::fs::copy(&self.src, &dst).unwrap(); },
+            }
+            AddPathType::Copy => {
+                std::fs::copy(&self.src, &dst).unwrap();
+            }
         }
         Ok(())
     }
@@ -81,7 +90,7 @@ impl AddPath {
                     std::fs::remove_file(dst).unwrap();
                 } else {
                     log::warn!("Unable to clean symlink {dst:?}, skipping ...");
-                }                
+                }
             }
             AddPathType::SymlinkDirContent { .. } => {
                 if !dst.is_dir() {
@@ -94,16 +103,15 @@ impl AddPath {
                         std::fs::remove_file(path).unwrap();
                     }
                 }
-            },
+            }
             AddPathType::Copy => {
                 if !dst.is_file() {
                     log::warn!("Unable to clean copied file {dst:?}, skipping ...");
                 } else {
                     std::fs::remove_file(dst).unwrap();
                 }
-            },
+            }
         }
         Ok(())
     }
 }
-

@@ -1,4 +1,3 @@
-
 use std::path::PathBuf;
 
 use rand::Rng;
@@ -30,17 +29,22 @@ pub fn random_tmp_dir() -> PathBuf {
 }
 
 pub fn remove_empty_dir_tree(src: &PathBuf) -> Result<(), Errcode> {
-    log::debug!("Removing empty dir tree {src:?}");
     match std::fs::read_dir(&src) {
         Err(e) => {
             log::error!("Error while listing files in {src:?}: {e:?}");
-            Err(Errcode::UtilError("remove_empty_dir_tree", format!("{src:?} not a directory")))
-        },
+            Err(Errcode::UtilError(
+                "remove_empty_dir_tree",
+                format!("{src:?} not a directory"),
+            ))
+        }
         Ok(all_paths) => {
             for path in all_paths {
                 let path = path.unwrap().path();
                 if !path.is_dir() {
-                    return Err(Errcode::UtilError("remove_empty_dir_tree", format!("Directory {src:?} not empty")));
+                    return Err(Errcode::UtilError(
+                        "remove_empty_dir_tree",
+                        format!("Directory {src:?} not empty"),
+                    ));
                 }
                 remove_empty_dir_tree(&path)?;
             }
@@ -48,6 +52,37 @@ pub fn remove_empty_dir_tree(src: &PathBuf) -> Result<(), Errcode> {
                 log::error!("Unable to remove directory {src:?}: {e:?}");
             }
             Ok(())
+        }
+    }
+}
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+    /// This is an example for using doc comment attributes
+    static ref TMP_FILES_CLEAN : Vec<&'static str> = Vec::from([
+        "/var/db/sudo/lectured"
+    ]);
+}
+
+pub fn clean_tmp_files(root: &PathBuf) {
+    for str_path in TMP_FILES_CLEAN.iter() {
+        let path = if let Some(p) = str_path.strip_prefix("/") {
+            root.join(p)
+        } else {
+            root.join(str_path)
+        };
+
+        if path.exists() {
+            if let Err(e) = if path.is_dir() {
+                std::fs::remove_dir_all(&path)
+            } else {
+                std::fs::remove_file(&path)
+            } {
+                log::warn!("Unable to clean tmp file {path:?}: {e:?}");
+            }
+        } else {
+            log::warn!("Unable to clean tmp file {path:?}: not found");
         }
     }
 }

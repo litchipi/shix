@@ -18,6 +18,13 @@ pub struct Args {
     #[structopt(short, long)]
     pub script: std::path::PathBuf,
 
+    /// ID of the user to change
+    #[structopt(short, long)]
+    pub uid: u32,
+
+    /// ID of the group to change
+    #[structopt(short, long)]
+    pub gid: u32,
 }
 
 pub fn parse_args() -> Result<Args, Errcode> {

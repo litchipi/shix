@@ -23,20 +23,16 @@ pub fn restrict_resources(hostname: &String, pid: Pid) -> Result<(), Errcode> {
         .cpu()
         .shares(CPU_SHARES)
         .done()
-
         .memory()
         .kernel_memory_limit(KMEM_LIMIT)
         .memory_hard_limit(MEM_LIMIT)
         .done()
-
         .pid()
         .maximum_number_of_processes(MAX_PID)
         .done()
-
         .blkio()
         .weight(50)
         .done()
-
         .build(Box::new(V2::new()));
 
     let pid: u64 = pid.as_raw().try_into().unwrap();
@@ -52,7 +48,6 @@ pub fn restrict_resources(hostname: &String, pid: Pid) -> Result<(), Errcode> {
 }
 
 pub fn clean_cgroups(hostname: &String) -> Result<(), Errcode> {
-    log::debug!("Cleaning cgroups");
     match canonicalize(format!("/sys/fs/cgroup/{}/", hostname)) {
         Ok(d) => {
             if let Err(_) = remove_dir(d) {

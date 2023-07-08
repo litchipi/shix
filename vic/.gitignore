@@ -3,3 +3,4 @@
 *.orig
 mountdir/
 *_all_steps.sh
+hometest
