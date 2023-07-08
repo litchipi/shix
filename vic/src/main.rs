@@ -13,6 +13,7 @@ mod mounts;
 mod resources;
 mod syscalls;
 mod add_paths;
+mod utils;
 
 use errors::exit_with_retcode;
 

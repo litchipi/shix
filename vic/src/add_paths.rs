@@ -1,4 +1,5 @@
-use crate::{errors::Errcode, mounts::{create_directory, mount_directory, create_symlink, unmount_path}};
+use crate::errors::Errcode;
+use crate::mounts::{create_directory, mount_directory, create_symlink};
 use nix::mount::MsFlags;
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -28,15 +29,18 @@ pub struct AddPath {
 }
 
 impl AddPath {
-    pub fn add_to_root(&self, root: &PathBuf) -> Result<(), Errcode> {
-        // TODO    Trim the "/" prefix in dst to join
-        let dst = if self.dst.starts_with("/") {
+    pub fn get_root_dst(&self, root: &PathBuf) -> PathBuf {
+        if self.dst.starts_with("/") {
             root.join(self.dst.strip_prefix("/").unwrap())
         } else {
             root.join(&self.dst)
-        };
+        }
+    }
+    pub fn add_to_root(&self, root: &PathBuf) -> Result<(), Errcode> {
+        // TODO    Trim the "/" prefix in dst to join
+        let dst = self.get_root_dst(root);
         match &self.path_type {
-            AddPathType::Mount { flags} => {
+            AddPathType::Mount { .. } => {
                 create_directory(&dst)?;
                 mount_directory(
                     Some(&self.src),
@@ -66,12 +70,38 @@ impl AddPath {
         Ok(())
     }
 
-    // TODO    Clean safely here
-    pub fn clean(&self) -> Result<(), Errcode> {
-        match &self.path_type {
+    pub fn clean(&self, root: &PathBuf) -> Result<(), Errcode> {
+        let dst = self.get_root_dst(root);
+        match self.path_type {
             AddPathType::Mount { .. } => {
+                // remove_empty_dir_tree(&dst)?;
             }
-            _ => {},
+            AddPathType::Symlink => {
+                if dst.is_symlink() {
+                    std::fs::remove_file(dst).unwrap();
+                } else {
+                    log::warn!("Unable to clean symlink {dst:?}, skipping ...");
+                }                
+            }
+            AddPathType::SymlinkDirContent { .. } => {
+                if !dst.is_dir() {
+                    log::warn!("Unable to clean symlinked-content dir {dst:?}, skipping ...");
+                    return Ok(());
+                }
+                for path in std::fs::read_dir(&dst).unwrap() {
+                    let path = path.unwrap().path();
+                    if path.is_symlink() {
+                        std::fs::remove_file(path).unwrap();
+                    }
+                }
+            },
+            AddPathType::Copy => {
+                if !dst.is_file() {
+                    log::warn!("Unable to clean copied file {dst:?}, skipping ...");
+                } else {
+                    std::fs::remove_file(dst).unwrap();
+                }
+            },
         }
         Ok(())
     }

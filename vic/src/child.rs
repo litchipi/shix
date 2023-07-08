@@ -14,7 +14,12 @@ use std::ffi::CString;
 const STACK_SIZE: usize = 1024 * 1024;
 fn setup_container_configurations(config: &ContainerOpts) -> Result<(), Errcode> {
     set_container_hostname(&config.hostname)?;
-    setmountpoint(&config.mount_dir, &config.addpaths)?;
+    setmountpoint(
+        &config.new_root,
+        &config.root_mount_point,
+        &config.home_dir,
+        &config.addpaths
+    )?;
     setcapabilities()?;
     setsyscalls()?;
     Ok(())

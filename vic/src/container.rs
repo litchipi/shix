@@ -1,9 +1,10 @@
+
 use crate::child::generate_child_process;
 use crate::cli::Args;
 use crate::config::ContainerOpts;
 use crate::errors::Errcode;
-use crate::mounts::clean_paths;
 use crate::resources::{clean_cgroups, restrict_resources};
+use crate::utils::remove_empty_dir_tree;
 
 use nix::sys::utsname::uname;
 use nix::sys::wait::waitpid;
@@ -16,8 +17,7 @@ pub struct Container {
 impl Container {
     pub fn new(args: Args) -> Result<Container, Errcode> {
         let mut config = ContainerOpts::from_file(&args.config_file)?;
-        config.script = args.script;
-        config.validate()?;
+        config.prepare_and_validate(&args)?;
         Ok(Container {
             config,
         })
@@ -32,8 +32,16 @@ impl Container {
 
     pub fn clean_exit(&mut self) -> Result<(), Errcode> {
         log::debug!("Cleaning container");
-        for p in self.config.addpaths.iter() {
-            p.clean()?;
+
+        for path in self.config.addpaths.iter() {
+            path.clean(&self.config.root_mount_point)?;
+        }
+
+        if let Err(e) = remove_empty_dir_tree(&self.config.new_root) {
+            log::warn!("Unable to remove {:?} (error: {e:?}), skipping ...", self.config.new_root);
+        }
+        if let Err(e) = remove_empty_dir_tree(&self.config.root_mount_point) {
+            log::warn!("Unable to remove {:?} (error: {e:?}), skipping ...", self.config.root_mount_point);
         }
 
         if let Err(e) = clean_cgroups(&self.config.hostname) {

@@ -6,50 +6,6 @@ use std::path::PathBuf;
 // TODO    Set /host mountpoint as a constant / config var
 // TODO    remove /tmp/crabcan.XXXXX after use
 
-//https://rust-lang-nursery.github.io/rust-cookbook/algorithms/randomness.html
-use rand::Rng;
-pub fn random_string(n: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                            abcdefghijklmnopqrstuvwxyz\
-                            0123456789";
-    let mut rng = rand::thread_rng();
-
-    let name: String = (0..n)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect();
-
-    name
-}
-
-pub fn unmount_path(path: &PathBuf) -> Result<(), Errcode> {
-    log::debug!("UNMOUNT {path:?}");
-    // match umount2(path, MntFlags::MNT_DETACH) {
-    //     Ok(_) => Ok(()),
-    //     Err(e) => {
-    //         log::error!("Unable to umount {}: {}", path.to_str().unwrap(), e);
-    //         Err(Errcode::MountsError(0))
-    //     }
-    // }
-    Ok(())
-}
-
-pub fn delete_dir(path: &PathBuf) -> Result<(), Errcode> {
-    match remove_dir(path.as_path()) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            log::error!(
-                "Unable to delete directory {}: {}",
-                path.to_str().unwrap(),
-                e
-            );
-            Err(Errcode::MountsError(1))
-        }
-    }
-}
-
 use std::fs::create_dir_all;
 pub fn create_directory(path: &PathBuf) -> Result<(), Errcode> {
     match create_dir_all(path) {
@@ -116,11 +72,12 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
     Ok(())
 }
 
-use nix::mount::{mount, umount2, MntFlags, MsFlags};
+use nix::mount::{mount, MsFlags};
 use nix::unistd::{chdir, pivot_root};
-use std::fs::remove_dir;
 pub fn setmountpoint(
-    mount_dir: &PathBuf,
+    new_root: &PathBuf,
+    root_mount_point: &PathBuf,
+    home_dir: &PathBuf,
     addpaths: &Vec<AddPath>,
 ) -> Result<(), Errcode> {
     log::debug!("Setting mount points ...");
@@ -130,45 +87,35 @@ pub fn setmountpoint(
         vec![MsFlags::MS_REC, MsFlags::MS_PRIVATE],
     )?;
 
-    let new_root = PathBuf::from(format!("/tmp/crabcan.{}", random_string(12)));
-    log::debug!(
-        "Mounting temp directory {}",
-        new_root.as_path().to_str().unwrap()
-    );
+    log::debug!("Mounting root mount point {root_mount_point:?} to new root {new_root:?}");
     create_directory(&new_root)?;
+    create_directory(&root_mount_point)?;
     mount_directory(
-        Some(mount_dir),
+        Some(&root_mount_point),
         &new_root,
         vec![MsFlags::MS_BIND, MsFlags::MS_PRIVATE],
     )?;
+
+    create_directory(&new_root.join("home"))?;
+    mount_directory(Some(home_dir), &new_root.join("home"), vec![MsFlags::MS_BIND])?;
 
     log::debug!("Mounting additionnal paths");
     for p in addpaths.iter() {
         p.add_to_root(&new_root)?;
     }
 
-    log::debug!("Pivoting root");
     let put_old = new_root.join("host");
     create_directory(&put_old)?;
-    if pivot_root(&new_root, &put_old).is_err() {
+
+    log::debug!("Pivoting root to {new_root:?}, putting old root in {put_old:?}");
+    if let Err(e) = pivot_root(new_root, &put_old) {
+        log::error!("Error while pivoting root: {e:?}");
         return Err(Errcode::MountsError(4));
     }
 
     log::debug!("Unmounting old root");
     if chdir(&PathBuf::from("/")).is_err() {
         return Err(Errcode::MountsError(5));
-    }
-    Ok(())
-}
-
-pub fn clean_paths(add_paths: &Vec<AddPath>) -> Result<(), Errcode> {
-    let paths = std::fs::read_dir("/").unwrap();
-    for path in paths {
-        println!("{}", path.unwrap().path().display());
-    }
-
-    for path in add_paths.iter() {
-        path.clean()?;
     }
     Ok(())
 }
