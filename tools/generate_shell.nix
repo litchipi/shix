@@ -3,8 +3,9 @@
   # secretstool = import ../tools/secrets.nix args;
 #in {
 {  
-  mkShell = { shell_bin, ...}: tmux: {
+  mkShell = { shell_bin, ps1, ...}: tmux: {
     name,
+    username,
     colors,
     
     packages ? [],
@@ -12,8 +13,25 @@
     shellCommand ? null,
     initScript ? "",
     exitScript ? "",
+    env_vars ? {},
   ...}:
   let
+    base_env_vars = {
+      HOME = "/home/${username}";
+      PATH = builtins.concatStringsSep ":" ([
+        "/run/wrappers/bin"
+        "/run/current-system/sw/bin"
+      ] ++ (builtins.map (p: "${p}/bin") packages));
+      TERM = "xterm-256color";
+      PS1 = ps1;
+      USER = username;
+    };
+  
+    setup_env_vars = builtins.concatStringsSep "\n" (
+      lib.attrsets.mapAttrsToList (key: val:
+        "export ${key}=\"${builtins.toString val}\""
+      ) (lib.attrsets.recursiveUpdate base_env_vars env_vars));
+
     checklist = {
       name_is_safe_string = (lib.strings.escapeShellArg name) == ("'" + name + "'");
       name_without_whitespace = ! lib.strings.hasInfix " " name;
@@ -34,7 +52,10 @@
       else shell_cmd;
 
     shell_activate = pkgs.writeScript "${name}_shell_activate.sh" (''
-      set -e
+      #!${pkgs.bash}/bin/bash
+      set -ex
+
+      ${setup_env_vars}
 
       # Remove annoying messages from Ubuntu
       touch $HOME/.sudo_as_admin_successful
@@ -43,6 +64,8 @@
         | sed "s/export PS1=/#export PS1=/g" \
         | grep -v -e "source.*git-prompt.*" \
         > $HOME/.bashrc
+      echo "export PS1=\"${ps1}\"" >> $HOME/.bashrc
+      cd $HOME
       
       ${initScript}
       ${shell_exec}

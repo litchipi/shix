@@ -53,27 +53,39 @@
     shelltool = import ./tools/generate_shell.nix tools_args;
     bashtool = import ./tools/bash.nix tools_args;
     tmuxtool = import ./tools/tmux.nix tools_args;
+    victool = import ./tools/vic.nix tools_args;
     shellArgs = {
       inherit pkgs pkgs_unstable lib system inputs bashtool tmuxtool;
       colorstool = import ./tools/colors.nix tools_args;
       ps1tool = import ./tools/ps1.nix tools_args;
     };
 
-    bwrap_lib = import ./tools/bwrap.nix { inherit pkgs lib; };
     mkShell = file: let
       data = import file shellArgs;
       tmux_data = tmuxtool.build data;
       bash_data = bashtool.build tmux_data.add_bashrc data;
-      start_cmd = shelltool.mkShell bash_data tmux_data data;
-      bwrap_args_list = bwrap_lib.get_args {
-        inherit bash_data tmux_data;
-      } data;
-      bwrap_args = builtins.concatStringsSep " " bwrap_args_list;
-    in pkgs.writeShellScript "${name_from_fname file}-shell" ''
+      start_script = shelltool.mkShell bash_data tmux_data data;
+      vic_cfg = victool.mkConfig data;
+      vic_config_file = pkgs.writeText "vic-${data.name}-config.json" (builtins.toJSON vic_cfg);
+    in pkgs.writeShellScript "${data.name}-shell" ''
       if ! [ -d ${data.homeDir} ]; then
         mkdir -p ${data.homeDir}
       fi
-      ${pkgs.bubblewrap}/bin/bwrap ${bwrap_args} -- ${start_cmd}
+      cd ./vic
+      CONTAINER_USER=$(cat /etc/passwd | grep '${vic_cfg.username}')
+      if [ -z "$CONTAINER_USER" ]; then
+        echo "Username ${vic_cfg.username} not found in /etc/passwd"
+        exit 1;
+      fi
+      export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:${pkgs.libseccomp.dev}/lib/pkgconfig"
+      cargo build
+      echo "config file: ${vic_config_file}"
+      sudo ./target/debug/vic \
+        --debug \
+        --config-file ${vic_config_file} \
+        --script ${start_script} \
+        --uid "$(echo "$CONTAINER_USER" | cut -d ':' -f 3)" \
+        --gid "$(echo "$CONTAINER_USER" | cut -d ':' -f 4)"
     '';
 
     shixbin = import ./shix_script.nix { inherit pkgs lib; };

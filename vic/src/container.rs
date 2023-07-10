@@ -3,7 +3,7 @@ use crate::cli::Args;
 use crate::config::ContainerOpts;
 use crate::errors::Errcode;
 use crate::resources::{clean_cgroups, restrict_resources};
-use crate::utils::{clean_tmp_files, remove_empty_dir_tree};
+use crate::utils::remove_empty_dir_tree;
 
 use nix::sys::utsname::uname;
 use nix::sys::wait::waitpid;
@@ -45,7 +45,6 @@ impl Container {
             );
         }
 
-        clean_tmp_files(&self.config.root_mount_point);
         if let Err(e) = remove_empty_dir_tree(&self.config.root_mount_point) {
             log::warn!(
                 "Unable to remove root mount point {:?} (error: {e:?}), skipping ...",

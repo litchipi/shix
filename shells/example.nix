@@ -1,6 +1,7 @@
 { pkgs, colorstool, tmuxtool, ps1tool, ...}: rec {
   # Name of the shell
   name = "ShixExample";
+  username = "john";
 
   # Directory that will be mounted as $HOME
   homeDir = "/tmp/temporary_home";
@@ -80,7 +81,7 @@
 
   # Spawning a custom tmux when creating the shell
   tmux = {
-    enable = true;
+    # enable = true;
     # configs_files = [
     #   /path/to/my/tmux.conf
     #  (pkgs.fetchurl { url = "http://url/to/my/tmux.conf", ... })
