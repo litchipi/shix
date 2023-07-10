@@ -69,7 +69,7 @@ fn child(config: ContainerOpts) -> isize {
         }
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_millis(100));
     log::info!("Starting container with script {:?}", config.script,);
 
     let script: CString = CString::new(config.script.to_str().unwrap()).unwrap();

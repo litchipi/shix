@@ -28,7 +28,6 @@ impl Container {
     }
 
     pub fn clean_exit(&mut self) -> Result<(), Errcode> {
-        std::thread::sleep(std::time::Duration::from_secs(1));
         for path in self.config.addpaths.iter() {
             if let Err(e) = path.clean(&self.config.root_mount_point) {
                 log::warn!(
@@ -42,13 +41,6 @@ impl Container {
             log::warn!(
                 "Unable to remove new root dir {:?} (error: {e:?}), skipping ...",
                 self.config.new_root
-            );
-        }
-
-        if let Err(e) = remove_empty_dir_tree(&self.config.root_mount_point) {
-            log::warn!(
-                "Unable to remove root mount point {:?} (error: {e:?}), skipping ...",
-                self.config.root_mount_point
             );
         }
 

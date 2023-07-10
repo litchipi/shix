@@ -28,29 +28,47 @@
     ps1 = "\\u \\w $";
   };
 
+  set_base_env_vars = tmux: { username, packages ? [], ... }: {
+    HOME = "/home/${username}";
+    TERM = builtins.trace tmux.enable (if tmux.enable then "tmux-256color" else "xterm-256color");
+    USER = username;
+  };
+
+  setup_env_vars = base_env_vars: env_vars: builtins.concatStringsSep "\n" (
+    lib.attrsets.mapAttrsToList (key: val:
+      if builtins.isNull val then "" else "export ${key}=\"${builtins.toString val}\""
+    ) (lib.attrsets.recursiveUpdate base_env_vars env_vars));
+
 in rec {
-  build = add_bashrc: {
+  build = tmuxcfg: {
     name,
     shell ? {},
+    env_vars ? {},
   ... }@cfg: let
     shell_config = lib.attrsets.recursiveUpdate default_shell_config shell;
   in {
-    bashrc = mkBashrc add_bashrc cfg shell_config;
+    bashrc = mkBashrc tmuxcfg cfg shell_config;
     shell_bin = shell_config.bin;
     ps1 = shell_config.ps1;
   };
 
-  mkBashrc = add_bashrc: {
+  mkBashrc = tmuxcfg: {
     name,
+    username,
     packages ? [],
-  ...}: cfg: let
+    env_vars ? {},
+  ...}@data: cfg: let
     all_scripts = builtins.concatStringsSep "\n\n" (
       pkgs.lib.attrsets.mapAttrsToList generate_script (cfg.scripts // (base_scripts name))
     );
 
-    add_path = "export PATH=" + (lib.strings.makeBinPath (packages ++
+    add_path = "export PATH=\"" + (lib.strings.makeBinPath (packages ++
       (if (builtins.length cfg.pkgconfig_libs) > 0 then [pkgs.pkg-config] else [])
-    )) + ":$HOME/.local/bin:$PATH";
+       ++ [
+        "$HOME/.local"
+        "/run/wrappers"
+        "/run/current-system/sw"
+      ])) + "\"";
 
     add_pkgconfig_libs = if (builtins.length cfg.pkgconfig_libs) > 0 then
       "export PKG_CONFIG_PATH=" + (builtins.concatStringsSep ":" (builtins.map (l:
@@ -70,11 +88,13 @@ in rec {
       export PS1="${cfg.ps1}"
     '') + ''
 
+      ${setup_env_vars (set_base_env_vars tmuxcfg data) env_vars}
       ${add_path}
       ${add_pkgconfig_libs}
+
       cd $HOME
 
-      ${add_bashrc}
+      ${tmuxcfg.add_bashrc}
 
       ${cfg.bashInitExtra}
     '';

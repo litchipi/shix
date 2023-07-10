@@ -158,7 +158,7 @@ let
     tmux_bin = "${tmux_config.tmux_package}/bin/tmux";
     tmuxp_bin = "${tmux_config.tmuxp_package}/bin/tmuxp";
   in if builtins.isNull tmux_config.tmuxp_session
-    then "${tmux_bin} -L \"${name}\" -u -f \"${config_file}\""
+    then "${tmux_bin} -L ${name} -u -f ${config_file}"
     else "${tmuxp_bin} load -L \"${name}\" -f \"${config_file}\" -y -s \"${name}\" -2 ${tmux_config.tmuxp_session}";
 
   default_tmux_config = {

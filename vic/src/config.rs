@@ -1,4 +1,4 @@
-use crate::add_paths::AddPath;
+use crate::add_paths::{AddPath, FsInit};
 use crate::utils::random_tmp_dir;
 use crate::{cli::Args, errors::Errcode};
 use serde::{Deserialize, Serialize};
@@ -8,8 +8,9 @@ use std::path::PathBuf;
 pub struct ContainerOpts {
     pub username: String,
     pub hostname: String,
-    pub home_dir: PathBuf,
+    pub root_mount_point: PathBuf,
     pub addpaths: Vec<AddPath>,
+    pub fs_init: FsInit,
 
     // Got from args
     #[serde(skip)]
@@ -20,8 +21,6 @@ pub struct ContainerOpts {
     // Generated config
     #[serde(skip)]
     pub new_root: PathBuf,
-    #[serde(skip)]
-    pub root_mount_point: PathBuf,
 }
 
 impl ContainerOpts {
@@ -35,10 +34,10 @@ impl ContainerOpts {
     }
 
     pub fn prepare_and_validate(&mut self, args: &Args) -> Result<(), Errcode> {
-        if !self.home_dir.exists() || !self.home_dir.is_dir() {
-            return Err(Errcode::InvalidConfig("mount dir doesn't exist"));
+        if !self.root_mount_point.exists() || !self.root_mount_point.is_dir() {
+            std::fs::create_dir_all(&self.root_mount_point).unwrap();
         }
-        self.home_dir = self.home_dir.canonicalize().unwrap();
+        self.root_mount_point = self.root_mount_point.canonicalize().unwrap();
 
         for p in self.addpaths.iter() {
             if !p.src.exists() {
@@ -54,7 +53,6 @@ impl ContainerOpts {
         self.script = args.script.canonicalize().unwrap();
 
         self.new_root = random_tmp_dir();
-        self.root_mount_point = random_tmp_dir();
         Ok(())
     }
 }

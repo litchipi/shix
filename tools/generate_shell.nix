@@ -3,7 +3,7 @@
   # secretstool = import ../tools/secrets.nix args;
 #in {
 {  
-  mkShell = { shell_bin, ps1, ...}: tmux: {
+  mkShell = { shell_bin, bashrc, ...}: tmux: {
     name,
     username,
     colors,
@@ -16,22 +16,6 @@
     env_vars ? {},
   ...}:
   let
-    base_env_vars = {
-      HOME = "/home/${username}";
-      PATH = builtins.concatStringsSep ":" ([
-        "/run/wrappers/bin"
-        "/run/current-system/sw/bin"
-      ] ++ (builtins.map (p: "${p}/bin") packages));
-      TERM = "xterm-256color";
-      PS1 = ps1;
-      USER = username;
-    };
-  
-    setup_env_vars = builtins.concatStringsSep "\n" (
-      lib.attrsets.mapAttrsToList (key: val:
-        "export ${key}=\"${builtins.toString val}\""
-      ) (lib.attrsets.recursiveUpdate base_env_vars env_vars));
-
     checklist = {
       name_is_safe_string = (lib.strings.escapeShellArg name) == ("'" + name + "'");
       name_without_whitespace = ! lib.strings.hasInfix " " name;
@@ -52,28 +36,28 @@
       else shell_cmd;
 
     shell_activate = pkgs.writeScript "${name}_shell_activate.sh" (''
-      #!${pkgs.bash}/bin/bash
-      set -ex
+      #!${pkgs.bashInteractive}/bin/bash
+      set -e
 
-      ${setup_env_vars}
+      # Temporary variables set for the initialization script, will be overwritten by bashrc
+      export PATH="/run/wrappers/bin:/run/current-system/sw/bin"
+      export HOME="/home/${username}"
+      export TERM="xterm-256color"
 
       # Remove annoying messages from Ubuntu
       touch $HOME/.sudo_as_admin_successful
 
-      cat /host/home/$USER/.bashrc \
-        | sed "s/export PS1=/#export PS1=/g" \
-        | grep -v -e "source.*git-prompt.*" \
-        > $HOME/.bashrc
-      echo "export PS1=\"${ps1}\"" >> $HOME/.bashrc
-      cd $HOME
+      rm -f $HOME/.bashrc
+      cp ${bashrc} $HOME/.bashrc
       
       ${initScript}
+      set +e
       ${shell_exec}
       ${exitScript}
       exit 0;
     '');
   in (if (builtins.deepSeq configcheck configcheck.ok)
-    then shell_activate
+    then builtins.trace "Activation script: ${shell_activate}" shell_activate
     else builtins.throw "Failed checks: ${builtins.concatStringsSep ", " configcheck.list}"
   );
 }

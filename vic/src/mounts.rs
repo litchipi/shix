@@ -1,4 +1,3 @@
-use crate::add_paths::AddPath;
 use crate::config::ContainerOpts;
 use crate::errors::Errcode;
 
@@ -20,13 +19,20 @@ pub fn create_directory(path: &PathBuf) -> Result<(), Errcode> {
 pub fn mount_directory(
     path: Option<&PathBuf>,
     mount_point: &PathBuf,
+    mount_type: &Option<String>,
     flags: Vec<MsFlags>,
 ) -> Result<(), Errcode> {
     let mut ms_flags = MsFlags::empty();
     for f in flags.iter() {
         ms_flags.insert(*f);
     }
-    match mount::<PathBuf, PathBuf, PathBuf, PathBuf>(path, mount_point, None, ms_flags, None) {
+    match mount(
+        path,
+        mount_point,
+        mount_type.as_ref().map(|v| v.as_str()),
+        ms_flags,
+        None::<&PathBuf>,
+    ) {
         Ok(_) => Ok(()),
         Err(e) => {
             if let Some(p) = path {
@@ -73,12 +79,13 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
 }
 
 use nix::mount::{mount, MsFlags};
-use nix::unistd::{chdir, pivot_root};
+use nix::unistd::{chdir, chown, pivot_root, Gid, Uid};
 pub fn setmountpoint(config: &ContainerOpts) -> Result<(), Errcode> {
     log::debug!("Setting mount points ...");
     mount_directory(
         None,
         &PathBuf::from("/"),
+        &None,
         vec![MsFlags::MS_REC, MsFlags::MS_PRIVATE],
     )?;
 
@@ -92,19 +99,27 @@ pub fn setmountpoint(config: &ContainerOpts) -> Result<(), Errcode> {
     mount_directory(
         Some(&config.root_mount_point),
         &config.new_root,
+        &None,
         vec![MsFlags::MS_BIND, MsFlags::MS_PRIVATE],
     )?;
 
-    create_directory(&config.new_root.join("home").join(&config.username))?;
-    mount_directory(
-        Some(&config.home_dir),
-        &config.new_root.join("home").join(&config.username),
-        vec![MsFlags::MS_BIND],
-    )?;
+    let home_path = config.new_root.join("home").join(&config.username);
+    create_directory(&home_path)?;
+    chown(
+        &home_path,
+        Some(Uid::from_raw(config.uid_gid.0)),
+        Some(Gid::from_raw(config.uid_gid.1)),
+    )
+    .unwrap();
 
     log::debug!("Mounting additionnal paths");
     for p in config.addpaths.iter() {
         p.add_to_root(&config.new_root)?;
+    }
+
+    log::debug!("Initializing filesystem");
+    for (path, entry) in config.fs_init.iter() {
+        entry.create(&config.new_root, path)?;
     }
 
     let put_old = config.new_root.join("host");
