@@ -114,7 +114,7 @@ impl AddPath {
                 for path in std::fs::read_dir(&self.src).unwrap() {
                     let path = path.unwrap().path();
                     let fname = path.file_name().unwrap();
-                    if exceptions.contains(&path) {
+                    if exceptions.contains(&path) || exceptions.contains(&PathBuf::from(fname)) {
                         continue;
                     }
                     let dst = if path.is_symlink() {
