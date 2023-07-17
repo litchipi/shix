@@ -86,7 +86,7 @@ in rec {
         echo "Usage: importvm <name>"
         return 1;
       fi
-      VBoxManage import "${vm_dir}/$1.ova" --vsys 0 --basefolder "$HOME/.vbox-disks"
+      VBoxManage import "${vm_dir}/$1.ova" --vsys 0 --basefolder "$HOME/.vbox-disks" --vmname="$1" --cpus=$(nproc) && \
       VBoxManage modifyvm $1 --nic1 hostonly --host-only-adapter1=vboxnet0
     '';
 
