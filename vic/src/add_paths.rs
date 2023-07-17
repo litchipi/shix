@@ -28,7 +28,7 @@ impl FsInitEntry {
         let dst = if dst.starts_with("/") {
             root.join(dst.strip_prefix("/").unwrap())
         } else {
-            root.join(&dst)
+            root.join(dst)
         };
         match &self.fs_init_type {
             FsInitType::Directory => std::fs::create_dir_all(&dst).unwrap(),
@@ -49,21 +49,21 @@ impl FsInitEntry {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MountFlag {
     ReadOnly,
 }
 
-impl Into<MsFlags> for &MountFlag {
-    fn into(self) -> MsFlags {
-        match self {
+impl From<&MountFlag> for MsFlags {
+    fn from(val: &MountFlag) -> Self {
+        match val {
             MountFlag::ReadOnly => MsFlags::MS_RDONLY,
         }
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AddPathType {
     Mount {
@@ -77,7 +77,7 @@ pub enum AddPathType {
     Copy,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AddPath {
     pub src: PathBuf,
     pub dst: PathBuf,
@@ -104,7 +104,12 @@ impl AddPath {
                 create_directory(&dst)?;
                 mount_directory(Some(&self.src), &dst, mount_type, mnt_flags)?;
             }
-            AddPathType::Symlink => create_symlink(&self.src, &self.dst)?,
+            AddPathType::Symlink => {
+                log::debug!("{:?} {:?} {:?}", self.src, self.dst, dst);
+                if let Err(e) = create_symlink(&self.src, &dst) {
+                    log::error!("Error creating symlink {:?} -> {dst:?}: {e:?}", self.src);
+                }
+            }
             AddPathType::SymlinkDirContent { exceptions } => {
                 for path in std::fs::read_dir(&self.src).unwrap() {
                     let path = path.unwrap().path();

@@ -30,7 +30,7 @@ pub fn random_tmp_dir() -> PathBuf {
 }
 
 pub fn remove_empty_dir_tree(src: &PathBuf) -> Result<(), Errcode> {
-    match std::fs::read_dir(&src) {
+    match std::fs::read_dir(src) {
         Err(e) => {
             log::error!("Error while listing files in {src:?}: {e:?}");
             Err(Errcode::UtilError(

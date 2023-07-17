@@ -6,6 +6,7 @@ use libc::TIOCSTI;
 use nix::sched::CloneFlags;
 use nix::sys::stat::Mode;
 use syscallz::{Action, Cmp, Comparator, Context, Syscall};
+// TODO    Get syscalls to disable from config
 pub fn setsyscalls() -> Result<(), Errcode> {
     log::debug!("Refusing / Filtering unwanted syscalls");
     let s_isuid: u64 = Mode::S_ISUID.bits().into();

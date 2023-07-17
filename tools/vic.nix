@@ -4,26 +4,32 @@
     value = { dst = path; flags = flags; };
   };
 
-  default_mounts = (builtins.listToAttrs (
-    (builtins.map (p: mount_same_path p [ "read_only" ]) [
-      "/nix/store"
-      "/nix/var/nix"
-      "/run"
-      "/run/wrappers"
-      "/usr"
-      "/bin"
-      "/etc"
-      "/dev"
-    ])
-  )) // {    
-    "/proc" = { dst = "/proc"; flags = []; mount_type = "proc"; };
-    "/sys" = { dst = "/sys"; flags = []; mount_type = "sysfs"; };
+  default_mounts = { src = (builtins.listToAttrs (
+      (builtins.map (p: mount_same_path p [ "read_only" ]) [
+        "/nix/store"
+        "/nix/var/nix"
+        "/run"
+        "/run/wrappers"
+        "/usr"
+        "/bin"
+        "/dev"
+        "/lib64"
+      ])
+    )) // {    
+      "/proc" = { dst = "/proc"; flags = []; mount_type = "proc"; };
+      "/sys" = { dst = "/sys"; flags = []; mount_type = "sysfs"; };
+    };
   };
 
   default_symlinks = {
   };
 
   default_symlink_dir_content = {
+    src."/etc" = { dst = "/etc"; exceptions = [
+        "/etc/bashrc"
+        "/etc/profile"
+      ];
+    };
   };
 
   default_copies = {
@@ -35,9 +41,17 @@
   };
 
 
-  notNull = l: builtins.filter ({src, data}: !builtins.isNull data) (
-    lib.attrsets.mapAttrsToList (src: data: { inherit src data; }) l
-  );
+  prep_addpath = l: lib.lists.flatten (lib.attrsets.mapAttrsToList (target: datal:
+      if target == "src"
+      then lib.attrsets.mapAttrsToList (src: data: lib.attrsets.recursiveUpdate {
+          inherit src;
+        } data) datal
+      else if target == "dst"
+      then lib.attrsets.mapAttrsToList (dst: data: lib.attrsets.recursiveUpdate {
+          inherit dst;
+        } data) datal
+      else builtins.throw "Add path has to have either src or dst attribute set"
+    ) l);
 
 in {
   mkConfig = {
@@ -54,31 +68,29 @@ in {
     addsymlink_dir_content = lib.attrsets.recursiveUpdate default_symlink_dir_content symlink_dir_content;
     addcopies = lib.attrsets.recursiveUpdate default_copies copies;
   in {
-    inherit username root_mount_point;
+    inherit username root_mount_point fs_init;
     hostname = "${name}-shix";
-    addpaths = (builtins.map ({src, data}: {
-      inherit src;
-      inherit (data) dst;
-      type.mount.flags = data.flags;
-    }) (notNull addmounts))
 
-    ++ (builtins.map ({src, data}: {
-      inherit src;
-      inherit (data) dst;
+    addpaths = (builtins.map ({src, dst, flags ? [], mount_type ? "auto"}: {
+      inherit src dst;
+      type.mount = {
+        inherit flags mount_type;
+      };
+    }) (prep_addpath addmounts))
+
+    ++ (builtins.map ({src, dst}: {
+      inherit src dst;
       type = "symlink";
-    }) (notNull addsymlinks))
+    }) (prep_addpath addsymlinks))
     
-    ++ (builtins.map ({src, data}: {
-      inherit src;
-      inherit (data) dst;
-      type.symlink_dir_content.exceptions = data.exceptions;
-    }) (notNull addsymlink_dir_content))
+    ++ (builtins.map ({src, dst, exceptions ? []}: {
+      inherit src dst;
+      type.symlink_dir_content.exceptions = exceptions;
+    }) (prep_addpath addsymlink_dir_content))
 
-    ++ (builtins.map ({src, data}: {
-      inherit src;
-      inherit (data) dst;
+    ++ (builtins.map ({src, dst}: {
+      inherit src dst;
       type = "copy";
-    }) (notNull addcopies));
-    inherit fs_init;
+    }) (prep_addpath addcopies));
   };
 }

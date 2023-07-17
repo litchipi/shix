@@ -9,12 +9,13 @@ use rlimit::{setrlimit, Resource};
 use std::convert::TryInto;
 use std::fs::{canonicalize, remove_dir};
 
+// TODO    Set from configuration
 const CPU_SHARES: u64 = 256;
 //                      K       M       G
 const KMEM_LIMIT: i64 = 1024 * 1024 * 1024;
 const MEM_LIMIT: i64 = KMEM_LIMIT;
-const MAX_PID: MaxValue = MaxValue::Value(64);
-const NOFILE_RLIMIT: u64 = 64;
+const MAX_PID: MaxValue = MaxValue::Value(1024);
+const NOFILE_RLIMIT: u64 = 256;
 
 pub fn restrict_resources(hostname: &String, pid: Pid) -> Result<(), Errcode> {
     log::debug!("Restricting resources for hostname {}", hostname);

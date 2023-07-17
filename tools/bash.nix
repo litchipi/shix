@@ -79,10 +79,6 @@ in rec {
   in pkgs.writeTextFile {
     name = "custom_${name}_bashrc";
     text = ''
-      if [ -n "$__SANDBOXED_ETC_BASHRC_SOURCED" ]; then return; fi
-      __SANDBOXED_ETC_BASHRC_SOURCED=1
-      source /host/etc/profile
-      source /host/etc/bashrc
     '' + all_scripts + "\n" + (if builtins.isNull cfg.ps1 then "" else ''
       ${ps1tool.import_git_ps1}
       export PS1="${cfg.ps1}"

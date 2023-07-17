@@ -47,8 +47,19 @@
       # Remove annoying messages from Ubuntu
       touch $HOME/.sudo_as_admin_successful
 
-      rm -f $HOME/.bashrc
-      cp ${bashrc} $HOME/.bashrc
+      rm -f $HOME/.bashrc $HOME/.host_bashrc
+      cat /host/etc/profile | grep 'set-environment' >> $HOME/.host_bashrc
+      cat /host/etc/bashrc \
+        | sed 's/PS1=/: #PS1=/g' \
+        | sed 's+. /etc/profile+: #. /etc/profile+g' \
+        >> $HOME/.host_bashrc
+
+      cat << EOF > $HOME/.bashrc
+      if [ -n "\$__SANDBOXED_ETC_BASHRC_SOURCED" ]; then return; fi
+      __SANDBOXED_ETC_BASHRC_SOURCED=1
+      source $HOME/.host_bashrc
+      EOF
+      cat ${bashrc} >> $HOME/.bashrc
       
       ${initScript}
       set +e

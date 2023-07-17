@@ -56,20 +56,16 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
     } else {
         src.clone()
     };
-    let src = PathBuf::from("/host").join(&src);
+    let src = PathBuf::from("/host").join(src);
 
-    if dst.exists() {
-        // TODO    Option to remove if exist
-        panic!(
-            "Unable to create symlink {dst:?} from {:?}, file exists",
-            src
-        );
-    }
     if let Some(p) = dst.parent() {
         if let Err(e) = std::fs::create_dir_all(p) {
             log::error!("Unable to create parent directory: {e:?}");
             return Err(Errcode::MountsError(6));
         }
+    }
+    if dst.is_symlink() {
+        std::fs::remove_file(dst).unwrap();
     }
     if let Err(e) = nix::unistd::symlinkat(&src, None, dst) {
         log::error!("Unable to create symlink: {e:?}");

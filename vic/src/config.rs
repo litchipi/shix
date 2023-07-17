@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContainerOpts {
+    // TODO    Do not use the username, get the username from UID
     pub username: String,
     pub hostname: String,
     pub root_mount_point: PathBuf,
@@ -25,12 +26,12 @@ pub struct ContainerOpts {
 
 impl ContainerOpts {
     pub fn from_file(f: &std::path::PathBuf) -> Result<ContainerOpts, Errcode> {
-        Ok(serde_json::from_str(
+        serde_json::from_str(
             std::fs::read_to_string(f)
                 .map_err(|e| Errcode::LoadConfigFile(format!("IO error {e:?}")))?
                 .as_str(),
         )
-        .map_err(|e| Errcode::LoadConfigFile(format!("Json load error {e:?}")))?)
+        .map_err(|e| Errcode::LoadConfigFile(format!("Json load error {e:?}")))
     }
 
     pub fn prepare_and_validate(&mut self, args: &Args) -> Result<(), Errcode> {
@@ -41,6 +42,7 @@ impl ContainerOpts {
 
         for p in self.addpaths.iter() {
             if !p.src.exists() {
+                log::error!("AddPath {p:?} doesn't exist");
                 return Err(Errcode::InvalidConfig("addpath doesn't exist"));
             }
         }

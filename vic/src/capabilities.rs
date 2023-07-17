@@ -32,6 +32,7 @@ lazy_static! {
     ]);
 }
 
+// TODO    Get capabilities to drop from configuration
 pub fn setcapabilities() -> Result<(), Errcode> {
     log::debug!("Clearing unwanted capabilities ...");
     if let Ok(mut caps) = FullCapState::get_current() {
