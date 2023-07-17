@@ -52,6 +52,7 @@
 in rec {
   name = "massa";
   username = "john";
+  root_mount_point = "/home/john/work/.massa_shix_root/";
 
   mounts.src."/home/john/work/massa".dst = "/home/john/workspace";
   symlink_dir_content.src."/home/john/.config/helix" = {

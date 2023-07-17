@@ -92,7 +92,7 @@
       remoteRepoUrl = "REMOTE_REPO_URL";
       pushAfterEditing = true;
       pullBeforeEditing = true;
-      baseDir = "BASE_DIR";
+      baseDir = "$HOME/BASE_DIR";
       shellEditCommand = "SHELL_EDIT";
     };
     apps = (builtins.listToAttrs (builtins.map (f: {

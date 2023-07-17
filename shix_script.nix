@@ -41,7 +41,7 @@
         exit 1;
     fi
 
-    pushd ${baseDir}
+    pushd "${baseDir}"
 
     if [ ! -f "${baseDir}/shells/$1.nix" ]; then
       echo "Shell $1 doesn't exist"
@@ -60,7 +60,7 @@
     fi
 
     echo "Cloning \"${remoteRepoUrl}\", if this repository doesn't exist yet, please fork the original project into this URL"
-    git clone ${remoteRepoUrl} ${baseDir}
+    git clone "${remoteRepoUrl}" "${baseDir}"
   '';
   
   shix_edit = ''
@@ -75,10 +75,10 @@
       exit 1;
     fi
 
-    pushd ${baseDir}
+    pushd "${baseDir}"
     ${lib.strings.optionalString pullBeforeEditing pullFromRemote}
 
-    FNAME=${baseDir}/shells/$NAME.nix
+    FNAME="${baseDir}/shells/$NAME.nix"
     if [ ! -f "$FNAME" ]; then
       read -p "Do you wish to create a new shix \"$NAME\" ? [y/N] " -r
       echo
@@ -91,7 +91,7 @@
       fi
     fi
 
-    ${shellEditCommand} "$FNAME"
+    "${shellEditCommand}" "$FNAME"
 
     git add "$FNAME"
     git commit -m "Edited $NAME shell"
@@ -104,7 +104,7 @@ in pkgs.writeShellApplication {
   name = "shix";
   runtimeInputs = [ pkgs.git ];
   text = ''
-    if ! [ -d ${baseDir} ]; then
+    if ! [ -d "${baseDir}" ]; then
       echo "Shix directory \"${baseDir}\" not initialized";
       echo "Use 'shix init <repository url>' to initialize it"
       exit 1;
