@@ -72,7 +72,7 @@ in rec {
 
     add_pkgconfig_libs = if (builtins.length cfg.pkgconfig_libs) > 0 then
       "export PKG_CONFIG_PATH=" + (builtins.concatStringsSep ":" (builtins.map (l:
-        "${l.dev}/lib/pkgconfig"
+        "${l}/lib/pkgconfig"
       ) cfg.pkgconfig_libs)) + ":$PKG_CONFIG_PATH"
     else "";
 
