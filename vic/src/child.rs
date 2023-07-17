@@ -86,10 +86,10 @@ pub fn generate_child_process(config: ContainerOpts) -> Result<Pid, Errcode> {
     let mut tmp_stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
     let mut flags = CloneFlags::empty();
     flags.insert(CloneFlags::CLONE_NEWNS);
-    // flags.insert(CloneFlags::CLONE_NEWCGROUP);
-    // flags.insert(CloneFlags::CLONE_NEWPID);
-    // flags.insert(CloneFlags::CLONE_NEWIPC);
-    // flags.insert(CloneFlags::CLONE_NEWUTS);
+    flags.insert(CloneFlags::CLONE_NEWUTS);
+    flags.insert(CloneFlags::CLONE_NEWCGROUP);
+    flags.insert(CloneFlags::CLONE_NEWPID);
+    flags.insert(CloneFlags::CLONE_NEWIPC);
     // flags.insert(CloneFlags::CLONE_NEWNET);
 
     match clone(
