@@ -1,0 +1,38 @@
+{
+  "session_name": "massa",
+  "windows": [
+    {
+      "options": {},
+      "window_name": "massa",
+      "layout": "796a,210x52,0,0[210x41,0,0,2,210x10,0,42,3]",
+      "panes": [
+        {
+          "shell_command": [
+            "cd massa",
+            "hx"
+          ],
+          "focus": "true"
+        },
+        {
+          "shell_command": [
+            "cd massa",
+            "clear"
+          ]
+        }
+      ],
+      "focus": "true"
+    },
+    {
+      "options": {},
+      "window_name": "shell",
+      "layout": "5aa4,210x52,0,0,34",
+      "panes": [
+        {
+          "shell_command": "clear",
+          "focus": "true"
+        }
+      ],
+      "start_directory": "/home/john/work/pro/massa/workspace"
+    }
+  ]
+}
