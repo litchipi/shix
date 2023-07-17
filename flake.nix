@@ -87,6 +87,13 @@
 
     vic_script = import ./vic/script.nix { inherit pkgs lib; };
   in {
+    packages.default = shixbin {
+      remoteRepoUrl = "REMOTE_REPO_URL";
+      pushAfterEditing = true;
+      pullBeforeEditing = true;
+      baseDir = "BASE_DIR";
+      shellEditCommand = "SHELL_EDIT";
+    };
     apps = (builtins.listToAttrs (builtins.map (f: {
       name = name_from_fname f;
       value = { type = "app"; program = "${mkShell f}"; };
