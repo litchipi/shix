@@ -55,6 +55,7 @@ in rec {
 
   # Add packages to the shell
   packages = with pkgs; [
+    feroxbuster
     gobuster
     nmap
     exploitdb
@@ -162,25 +163,31 @@ in rec {
 
     enumw = let
       all_exts = builtins.concatStringsSep "," [
-        "txt" "jpg" "png" "zip" "html" "php" "css"
+        "txt" "jpg" "png" "zip" "html" "php" "css" "pdf"
       ];
     in ''
       if [ $# -ne 1 ]; then
-        echo "Usage: $0 <url>"
+        echo "Usage: $0 <url> [any other param to feroxbuster]"
         return 1;
       fi
       TARGET=$1
+      shift 1
+
       FNAME=''${TARGET// /_}
       FNAME=''${FNAME//[^a-zA-Z0-9_]/}
       FNAME=`echo -n $FNAME | tr A-Z a-z`
 
-      gobuster dir \
+      feroxbuster \
+        -u "$TARGET" \
         -x ${all_exts} \
-        -w $HOME/.seclists/Discovery/Web-Content/directory-list-2.3-big.txt \
-        -u "$1" \
-        -o "/tmp/gobuster_dir_$FNAME"
+        --auto-tune \
+        --thorough \
+        -o "/tmp/enumw_$FNAME" \
+        -C 404 -r \
+        -w ~/.seclists/Discovery/Web-Content/raft-medium-directories.txt \
+        $@ 
       echo -e "\n\n[*] $1\n" >> ./enumw
-      cat "/tmp/gobuster_dir_$FNAME" >> ./enumw
+      cat "/tmp/enumw_$FNAME" >> ./enumw
     '';
 
     vhostenum = ''
