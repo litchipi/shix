@@ -1,14 +1,64 @@
-{ pkgs, colorstool, tmuxtool, ps1tool, inputs, system, ...}: let
+{ pkgs, pkgs_unstable, colorstool, tmuxtool, ps1tool, inputs, system, ...}: let
   rust_pkgs = import inputs.nixpkgs-unstable {
     inherit system;
     overlays = [ inputs.rust-overlay.overlays.default ];
   };
+  lib = pkgs.lib;
+
+  tomlEscapeKey = val:
+    if builtins.isString val && builtins.match "[A-Za-z0-9_-]+" val != null
+      then val
+      else builtins.toJSON val;
+  tomlEscapeValue = builtins.toJSON;
+  tomlValue = v:
+    if builtins.isList v
+      then "[${builtins.concatStringsSep ", " (builtins.map tomlValue v)}]"
+    else if builtins.isAttrs v
+      then "{${builtins.concatStringsSep ", " (lib.attrsets.mapAttrsToList tomlKV v)}}"
+    else tomlEscapeValue v;
+  tomlKV = k: v: "${tomlEscapeKey k} = ${tomlValue v}";
+
+  # languages_config = pkgs.lib.attrsets.mapAttrsToList (name: value: { inherit name; } // value) {
+  languages_config = {
+    nix.language-server.command = "${pkgs.nil}/bin/nil";
+    python.language-server.command = "${pkgs.python310Packages.python-lsp-server}/bin/pylsp";
+    rust = {
+      language-server = {
+        command = "${pkgs_unstable.rust-analyzer}/bin/rust-analyzer";
+        timeout = 60;
+      };
+      config = {
+        cachePriming.enable = false;
+        cargo.features = "all";
+        inlayHints = {
+          closingBraceHints = true;
+          closureReturnTypeHints.enable = "skip_trivial";
+          parameterHints.enable = false;
+          typeHints.enable = true;
+          inlayHints.maxLength = 10;
+        };
+      };
+    };
+  };
+  helix_languages = pkgs.writeText "helix-languages.toml" (
+    builtins.concatStringsSep "\n\n" (pkgs.lib.attrsets.mapAttrsToList (name: val: let
+      body = builtins.concatStringsSep "\n" (pkgs.lib.attrsets.mapAttrsToList tomlKV val);
+    in ''
+      [[language]]
+      name = "${name}"
+      ${body}
+    '') languages_config)
+  );
 in rec {
   name = "massa";
   username = "john";
 
   mounts.src."/home/john/work/massa".dst = "/home/john/workspace";
-  symlinks.src."/home/john/.config/helix".dst = "/home/john/.config/helix";
+  symlink_dir_content.src."/home/john/.config/helix" = {
+    dst = "/home/john/.config/helix";
+    exceptions = [ "languages.toml" ];
+  };
+  copies.dst."/home/john/.config/helix/languages.toml".src = helix_languages;
 
   colors = with colorstool; {
     primary = fromhex "#6978ff";
