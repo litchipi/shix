@@ -3,6 +3,7 @@ use crate::config::ContainerOpts;
 use crate::errors::Errcode;
 use crate::hostname::set_container_hostname;
 use crate::mounts::setmountpoint;
+use crate::syscalls::setsyscalls;
 
 use nix::unistd::getgrouplist;
 use nix::unistd::setgid;
@@ -22,7 +23,7 @@ fn setup_container_configurations(config: &ContainerOpts) -> Result<(), Errcode>
     set_container_hostname(&config.hostname)?;
     setmountpoint(config)?;
     setcapabilities()?;
-    // setsyscalls()?;
+    setsyscalls()?;
     setuser(config)?;
     Ok(())
 }

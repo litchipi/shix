@@ -17,7 +17,6 @@ pub enum Errcode {
     SyscallsError(u8),
     ResourcesError(u8),
     UtilError(&'static str, String),
-    CleaningError(&'static str, String),
     // RngError,
 }
 
