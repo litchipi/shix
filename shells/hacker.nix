@@ -3,6 +3,7 @@
   greencolor = colorstool.fromhex "#00FF00";
 
   vm_dir = "$HOME/.vms";
+  tools_dir = "/home/john/tools";
 in rec {
   # Name of the shell
   name = "hacker";
@@ -16,19 +17,22 @@ in rec {
       rev = "master";
       sha256 = "sha256-yVxb5GaQDuCsyjIV+oZzNUEFoq6gMPeaIeQviwGdAgY=";
     };
+
     dst."/home/john/.payloads".src = pkgs.fetchFromGitHub {
       owner = "swisskyrepo";
       repo = "PayloadsAllTheThings";
       rev = "cd19bb94096a61ef22d0c9668bc29674fce53fa0";
       sha256 = "sha256-UR7KXLZzqrhVr0dd6cdiHPcae6jQeWpd79A+IR6XRQs=";
     };
-    dst."/home/john/.custom_tools".src = pkgs.fetchFromGitHub {
+
+    dst."${tools_dir}/custom".src = pkgs.fetchFromGitHub {
       owner = "litchipi";
       repo = "pentest_tools";
       rev = "29e951aa145f1ffa043e4e184963e7474e17312f";
       sha256 = "sha256-BVZxMO9VU2PVmZum9jMdmjzMXT5AwoXzkKaH8I+9/+Q=";
     };
-    dst."/home/john/.lse.sh".src = let
+
+    dst."${tools_dir}/lse.sh".src = let
       source = pkgs.fetchFromGitHub {
         owner = "diego-treitos";
         repo = "linux-smart-enumeration";
@@ -36,6 +40,13 @@ in rec {
         sha256 = "sha256-IRQAM1jid4zv+qJgFvtLmM/ctOLJrovo0LtIN3PI0eg=";
       };
     in "${source}/lse.sh";
+
+    dst."${tools_dir}/pspy".src = let
+      version = "1.2.1";
+    in pkgs.fetchurl {
+      url = "https://github.com/DominicBreuker/pspy/releases/download/v${version}/pspy64";
+      sha256 = "sha256-yT8ppcwTR725DhShJCTmRpyM/qmiC4ALwkl1XwBDo7s=";
+    };
   };
 
   symlink_dir_content.src."/etc".exceptions = [
@@ -77,10 +88,14 @@ in rec {
   env_vars = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
     CMAKE="${pkgs.cmake}/bin/cmake";
+    GLIBC_STATIC = "${pkgs.glibc.static}";
   };
 
   # Custom aliases / scripts that are set for this shell
   shell.scripts = with colorstool; {
+    compile_static = ''
+      gcc -static -L${pkgs.glibc.static}/lib $@
+    '';
     importvm = ''
       if [ $# -ne 1 ]; then
         echo "Usage: importvm <name>"
@@ -227,7 +242,7 @@ in rec {
 
   # Some code executed each time we fire up the shell environment
   initScript = ''
-    mkdir -p ${vm_dir}/
+    mkdir -p ${vm_dir}/ ${tools_dir}/
   '';
 
   # Spawning a custom tmux when creating the shell
