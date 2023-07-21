@@ -24,7 +24,7 @@
     python.language-server.command = "${pkgs.python310Packages.python-lsp-server}/bin/pylsp";
     rust = {
       language-server = {
-        command = "${pkgs_unstable.rust-analyzer}/bin/rust-analyzer";
+        command = "${pkgs.rust-analyzer}/bin/rust-analyzer";
         timeout = 60;
       };
       config = {
@@ -95,6 +95,7 @@ in rec {
 
     grpc-tools
     sshpass
+    mold
   ];
 
   env_vars = {

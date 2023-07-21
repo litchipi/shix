@@ -5,7 +5,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    helix.url = "github:helix-editor/helix";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
