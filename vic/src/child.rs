@@ -23,7 +23,7 @@ fn setup_container_configurations(config: &ContainerOpts) -> Result<(), Errcode>
     set_container_hostname(&config.hostname)?;
     setmountpoint(config)?;
     setcapabilities()?;
-    setsyscalls()?;
+    // setsyscalls()?;
     setuser(config)?;
     Ok(())
 }
@@ -86,12 +86,15 @@ fn child(config: ContainerOpts) -> isize {
 pub fn generate_child_process(config: ContainerOpts) -> Result<Pid, Errcode> {
     let mut tmp_stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
     let mut flags = CloneFlags::empty();
+
+    // Mandatory
     flags.insert(CloneFlags::CLONE_NEWNS);
     flags.insert(CloneFlags::CLONE_NEWUTS);
+
+    // Optionnal
     flags.insert(CloneFlags::CLONE_NEWCGROUP);
     flags.insert(CloneFlags::CLONE_NEWPID);
     flags.insert(CloneFlags::CLONE_NEWIPC);
-    // flags.insert(CloneFlags::CLONE_NEWNET);
 
     match clone(
         Box::new(|| child(config.clone())),

@@ -67,15 +67,16 @@
       start_script = shelltool.mkShell bash_data tmux_data data;
       vic_cfg = victool.mkConfig data;
       vic_config_file = pkgs.writeText "vic-${data.name}-config.json" (builtins.toJSON vic_cfg);
+      is_release = true;
     in pkgs.writeShellScript "${data.name}-shell" ''
       cd ./vic
       CONTAINER_UID=$(id -u)
       CONTAINER_GID=$(id -g)
       export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:${pkgs.libseccomp.dev}/lib/pkgconfig"
-      cargo build
+      cargo build ${lib.strings.optionalString is_release "--release"}
       echo "config file: ${vic_config_file}"
 
-      sudo ./target/debug/vic \
+      sudo ./target/${if is_release then "release" else "debug"}/vic \
         --debug \
         --config-file ${vic_config_file} \
         --script ${start_script} \
