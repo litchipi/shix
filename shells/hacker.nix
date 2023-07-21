@@ -47,6 +47,13 @@ in rec {
       url = "https://github.com/DominicBreuker/pspy/releases/download/v${version}/pspy64";
       sha256 = "sha256-yT8ppcwTR725DhShJCTmRpyM/qmiC4ALwkl1XwBDo7s=";
     };
+
+    dst."${tools_dir}/fart".src = pkgs.fetchFromGitHub {
+      owner = "litchipi";
+      repo = "fart";
+      rev = "4775754a75d020f2b66f4760b58c508a7b11163f";
+      sha256 = "sha256-vBBEP5orVfY/C6RZpk7KVrTa1KV81+Z7IOmV37SWsrk=";
+    };
   };
 
   symlink_dir_content.src."/etc".exceptions = [
@@ -68,6 +75,7 @@ in rec {
   packages = with pkgs; [
     feroxbuster
     gobuster
+    wfuzz
     nmap
     exploitdb
     inetutils
@@ -89,6 +97,12 @@ in rec {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
     CMAKE="${pkgs.cmake}/bin/cmake";
     GLIBC_STATIC = "${pkgs.glibc.static}";
+
+    # Allow GUI applications to run
+    DISPLAY=":0";
+    WAYLAND_DISPLAY="wayland-0";
+    XDG_SESSION_TYPE="wayland";
+    XDG_RUNTIME_DIR="/run/user/$(id -u)/";
   };
 
   # Custom aliases / scripts that are set for this shell
@@ -199,7 +213,7 @@ in rec {
         --thorough \
         -o "/tmp/enumw_$FNAME" \
         -C 404 -r \
-        -w ~/.seclists/Discovery/Web-Content/raft-medium-directories.txt \
+        -w ~/.seclists/Discovery/Web-Content/directory-list-2.3-big.txt \
         $@ 
       echo -e "\n\n[*] $1\n" >> ./enumw
       cat "/tmp/enumw_$FNAME" >> ./enumw
@@ -229,6 +243,14 @@ in rec {
       NAME=$1
       shift 1;
       tar -cf $HOME/.archives/$NAME.tar.gz $@ && echo "Archive OK"
+    '';
+
+    start_socks = ''
+      if [ $# -ne 1 ]; then
+        echo "Usage: $0 <port>"
+        return 1;
+      fi
+       ssh -i /host/home/john/.ssh/id_rsa -D "$1" -C -N john@localhost
     '';
   };
 
