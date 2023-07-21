@@ -68,7 +68,7 @@ pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
         std::fs::remove_file(dst).unwrap();
     }
     if let Err(e) = nix::unistd::symlinkat(&src, None, dst) {
-        log::error!("Unable to create symlink: {e:?}");
+        log::error!("Unable to create symlink {dst:?}: {e:?}");
         return Err(Errcode::MountsError(7));
     }
     Ok(())
