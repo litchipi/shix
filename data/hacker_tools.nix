@@ -26,13 +26,13 @@
       owner = "litchipi";
       repo = "fart";
       rev = "fc62a9d21454e0b211a7d92ada8ca5ab2eb91e5e";
-      sha256 = lib.fakeSha256;
+      sha256 = "sha256-hQKkyk+XiPGZvnxhnJxibiTV0YJyCynWRMJ++cuuBvk=";
     };
 
     dst."${tools_dir}/smtp_user_enum.py".src = pkgs.fetchFromGitHub {
       owner = "cytopia";
       repo = "smtp-user-enum";
       rev = "758d60268733b00d9b18d510ede3dabd1fab3294";
-      sha256 = lib.fakeSha256;
+      sha256 = "sha256-2GI//nv87H2zDkkgjAHSx2Zm2Sk0EpxmXQAN+I1K65I=";
     };
 }
