@@ -3,13 +3,12 @@
   greencolor = colorstool.fromhex "#00FF00";
 
   vm_dir = "$HOME/.vms";
-  tools_dir = "/home/john/tools";
 in rec {
   # Name of the shell
   name = "hacker";
   username = "john";
   mounts.dst."/home/john".src = "/home/john/work/perso/pentest/workspace";
-  symlinks = {
+  symlinks = lib.attrsets.recursiveUpdate {
     src."/home/john/.config/helix".dst = "/home/john/.config/helix";
     dst."/home/john/.seclists".src = pkgs.fetchFromGitHub {
       owner = "danielmiessler";
@@ -24,37 +23,10 @@ in rec {
       rev = "cd19bb94096a61ef22d0c9668bc29674fce53fa0";
       sha256 = "sha256-UR7KXLZzqrhVr0dd6cdiHPcae6jQeWpd79A+IR6XRQs=";
     };
-
-    dst."${tools_dir}/custom".src = pkgs.fetchFromGitHub {
-      owner = "litchipi";
-      repo = "pentest_tools";
-      rev = "29e951aa145f1ffa043e4e184963e7474e17312f";
-      sha256 = "sha256-BVZxMO9VU2PVmZum9jMdmjzMXT5AwoXzkKaH8I+9/+Q=";
-    };
-
-    dst."${tools_dir}/lse.sh".src = let
-      source = pkgs.fetchFromGitHub {
-        owner = "diego-treitos";
-        repo = "linux-smart-enumeration";
-        rev = "06836ae365a707916dd8d6e355ba37c7f81e9bce";
-        sha256 = "sha256-IRQAM1jid4zv+qJgFvtLmM/ctOLJrovo0LtIN3PI0eg=";
-      };
-    in "${source}/lse.sh";
-
-    dst."${tools_dir}/pspy".src = let
-      version = "1.2.1";
-    in pkgs.fetchurl {
-      url = "https://github.com/DominicBreuker/pspy/releases/download/v${version}/pspy64";
-      sha256 = "sha256-yT8ppcwTR725DhShJCTmRpyM/qmiC4ALwkl1XwBDo7s=";
-    };
-
-    dst."${tools_dir}/fart".src = pkgs.fetchFromGitHub {
-      owner = "litchipi";
-      repo = "fart";
-      rev = "4775754a75d020f2b66f4760b58c508a7b11163f";
-      sha256 = "sha256-vBBEP5orVfY/C6RZpk7KVrTa1KV81+Z7IOmV37SWsrk=";
-    };
-  };
+  } (import ../data/hacker_tools.nix {
+    inherit pkgs lib;
+    tools_dir = "/home/john/tools";
+  });
 
   symlink_dir_content.src."/etc".exceptions = [
     "/etc/hosts"
@@ -84,6 +56,7 @@ in rec {
     binwalk
     hashcat
     bruteforce-luks
+    zip
 
     (python310.withPackages (p: with p; [
       requests
@@ -252,6 +225,16 @@ in rec {
       fi
        ssh -i /host/home/john/.ssh/id_rsa -D "$1" -C -N john@localhost
     '';
+
+    addhost = ''
+      if [ $# -ne 2 ]; then
+        echo "Usage: $0 <IP> <hostname>"
+        return 1;
+      fi
+
+      echo "$1 $2" >> $HOME/.add_hosts
+      echo "$1 $2" | sudo tee -a /etc/hosts
+    '';
   };
 
   # The custom PS1 to be used
@@ -264,7 +247,15 @@ in rec {
 
   # Some code executed each time we fire up the shell environment
   initScript = ''
-    mkdir -p ${vm_dir}/ ${tools_dir}/
+    mkdir -p ${vm_dir}/
+
+    touch $HOME/.add_hosts
+    echo "Adding additionnal hosts to /etc/hosts"
+    cat $HOME/.add_hosts | sudo tee -a /etc/hosts
+  '';
+
+  exitScript = ''
+    sudo rm /etc/hosts
   '';
 
   # Spawning a custom tmux when creating the shell
