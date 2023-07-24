@@ -1,12 +1,12 @@
 use crate::config::ContainerOpts;
 use crate::errors::Errcode;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // TODO    Set /host mountpoint as a constant / config var
 
 use std::fs::create_dir_all;
-pub fn create_directory(path: &PathBuf) -> Result<(), Errcode> {
+pub fn create_directory(path: &Path) -> Result<(), Errcode> {
     match create_dir_all(path) {
         Err(e) => {
             log::error!("Cannot create directory {}: {}", path.to_str().unwrap(), e);
@@ -50,11 +50,11 @@ pub fn mount_directory(
     }
 }
 
-pub fn create_symlink(src: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
+pub fn create_symlink(src: &Path, dst: &PathBuf) -> Result<(), Errcode> {
     let src: PathBuf = if src.starts_with("/") {
         src.strip_prefix("/").unwrap().into()
     } else {
-        src.clone()
+        src.to_path_buf()
     };
     let src = PathBuf::from("/host").join(src);
 

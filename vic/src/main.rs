@@ -8,13 +8,13 @@ mod child;
 mod cli;
 mod config;
 mod container;
+mod environment;
 mod errors;
 mod hostname;
 mod mounts;
 mod resources;
 mod syscalls;
 mod utils;
-mod environment;
 
 use errors::exit_with_retcode;
 

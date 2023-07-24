@@ -3,7 +3,7 @@ use crate::mounts::{create_directory, create_symlink, mount_directory};
 use nix::mount::MsFlags;
 use serde::{Deserialize, Serialize};
 use std::os::unix::prelude::PermissionsExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const BASE_MNT_FLAGS: [MsFlags; 3] = [MsFlags::MS_PRIVATE, MsFlags::MS_BIND, MsFlags::MS_REC];
 
@@ -24,7 +24,7 @@ pub struct FsInitEntry {
 }
 
 impl FsInitEntry {
-    pub fn create(&self, root: &PathBuf, dst: &PathBuf) -> Result<(), Errcode> {
+    pub fn create(&self, root: &Path, dst: &PathBuf) -> Result<(), Errcode> {
         let dst = if dst.starts_with("/") {
             root.join(dst.strip_prefix("/").unwrap())
         } else {
@@ -86,14 +86,14 @@ pub struct AddPath {
 }
 
 impl AddPath {
-    pub fn get_root_dst(&self, root: &PathBuf) -> PathBuf {
+    pub fn get_root_dst(&self, root: &Path) -> PathBuf {
         if self.dst.starts_with("/") {
             root.join(self.dst.strip_prefix("/").unwrap())
         } else {
             root.join(&self.dst)
         }
     }
-    pub fn add_to_root(&self, root: &PathBuf) -> Result<(), Errcode> {
+    pub fn add_to_root(&self, root: &Path) -> Result<(), Errcode> {
         let dst = self.get_root_dst(root);
         match &self.path_type {
             AddPathType::Mount { flags, mount_type } => {
@@ -136,7 +136,7 @@ impl AddPath {
         Ok(())
     }
 
-    pub fn clean(&self, root: &PathBuf) -> Result<(), Errcode> {
+    pub fn clean(&self, root: &Path) -> Result<(), Errcode> {
         let dst = self.get_root_dst(root);
         match self.path_type {
             AddPathType::Symlink => {
