@@ -58,6 +58,8 @@ in {
     name,
     username,
     root_mount_point ? "/tmp/shix/${name}/",
+    export_display_env ? false,
+    add_env_export ? [],
     mounts ? {},
     symlinks ? {},
     symlink_dir_content ? {},
@@ -69,6 +71,7 @@ in {
     addcopies = lib.attrsets.recursiveUpdate default_copies copies;
   in {
     inherit username root_mount_point fs_init;
+    inherit export_display_env add_env_export;
     hostname = "${name}-shix";
 
     addpaths = (builtins.map ({src, dst, flags ? [], mount_type ? "auto"}: {

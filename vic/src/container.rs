@@ -1,6 +1,7 @@
 use crate::child::generate_child_process;
 use crate::cli::Args;
 use crate::config::ContainerOpts;
+use crate::environment::generate_child_environment;
 use crate::errors::Errcode;
 use crate::resources::{clean_cgroups, restrict_resources};
 use crate::utils::remove_empty_dir_tree;
@@ -21,7 +22,8 @@ impl Container {
     }
 
     pub fn create(&mut self) -> Result<Pid, Errcode> {
-        let pid = generate_child_process(self.config.clone())?;
+        let env = generate_child_environment(&self.config)?;
+        let pid = generate_child_process(self.config.clone(), env)?;
         restrict_resources(&self.config.hostname, pid)?;
         log::debug!("Creation finished");
         Ok(pid)

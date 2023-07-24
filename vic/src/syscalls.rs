@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::errors::Errcode;
 
 const EPERM: u16 = 1;

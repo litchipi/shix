@@ -1,9 +1,9 @@
 use crate::capabilities::setcapabilities;
 use crate::config::ContainerOpts;
+use crate::environment::Environment;
 use crate::errors::Errcode;
 use crate::hostname::set_container_hostname;
 use crate::mounts::setmountpoint;
-use crate::syscalls::setsyscalls;
 
 use nix::unistd::getgrouplist;
 use nix::unistd::setgid;
@@ -61,7 +61,7 @@ fn setuser(config: &ContainerOpts) -> Result<(), Errcode> {
     Ok(())
 }
 
-fn child(config: ContainerOpts) -> isize {
+fn child(config: ContainerOpts, env: Environment) -> isize {
     match setup_container_configurations(&config) {
         Ok(_) => log::info!("Container set up successfully"),
         Err(e) => {
@@ -70,11 +70,16 @@ fn child(config: ContainerOpts) -> isize {
         }
     }
 
+    let environment: Vec<CString> = env
+        .into_iter()
+        .map(|(key, val)| CString::new(format!("{key}={val}")).unwrap())
+        .collect();
+
     std::thread::sleep(std::time::Duration::from_millis(100));
     log::info!("Starting container with script {:?}", config.script,);
 
     let script: CString = CString::new(config.script.to_str().unwrap()).unwrap();
-    match execve::<CString, CString>(&script, &[script.clone()], &[]) {
+    match execve::<CString, CString>(&script, &[script.clone()], &environment) {
         Ok(_) => 0,
         Err(e) => {
             log::error!("Error while trying to perform execve: {:?}", e);
@@ -83,7 +88,7 @@ fn child(config: ContainerOpts) -> isize {
     }
 }
 
-pub fn generate_child_process(config: ContainerOpts) -> Result<Pid, Errcode> {
+pub fn generate_child_process(config: ContainerOpts, env: Environment) -> Result<Pid, Errcode> {
     let mut tmp_stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
     let mut flags = CloneFlags::empty();
 
@@ -97,7 +102,8 @@ pub fn generate_child_process(config: ContainerOpts) -> Result<Pid, Errcode> {
     flags.insert(CloneFlags::CLONE_NEWIPC);
 
     match clone(
-        Box::new(|| child(config.clone())),
+        // TODO    Try to remove the clone here
+        Box::new(move || child(config.clone(), env.clone())),
         &mut tmp_stack,
         flags,
         Some(Signal::SIGCHLD as i32),

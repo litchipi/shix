@@ -30,7 +30,7 @@
 
   set_base_env_vars = tmux: { username, packages ? [], ... }: {
     HOME = "/home/${username}";
-    TERM = builtins.trace tmux.enable (if tmux.enable then "tmux-256color" else "xterm-256color");
+    TERM = if tmux.enable then "tmux-256color" else "xterm-256color";
     USER = username;
   };
 

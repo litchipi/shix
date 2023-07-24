@@ -6,12 +6,15 @@ use std::path::PathBuf;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ContainerOpts {
-    // TODO    Do not use the username, get the username from UID
+    // TODO    Do not use the username, get the username from calling process UID
     pub username: String,
     pub hostname: String,
     pub root_mount_point: PathBuf,
     pub addpaths: Vec<AddPath>,
     pub fs_init: FsInit,
+
+    pub export_display_env: bool,
+    pub add_env_export: Vec<String>,
 
     // Got from args
     #[serde(skip)]

@@ -76,7 +76,7 @@
       cargo build ${lib.strings.optionalString is_release "--release"}
       echo "config file: ${vic_config_file}"
 
-      sudo ./target/${if is_release then "release" else "debug"}/vic \
+      sudo -E ./target/${if is_release then "release" else "debug"}/vic \
         --debug \
         --config-file ${vic_config_file} \
         --script ${start_script} \

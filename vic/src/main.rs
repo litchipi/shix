@@ -14,6 +14,7 @@ mod mounts;
 mod resources;
 mod syscalls;
 mod utils;
+mod environment;
 
 use errors::exit_with_retcode;
 
