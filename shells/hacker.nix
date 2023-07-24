@@ -7,6 +7,8 @@ in rec {
   # Name of the shell
   name = "hacker";
   username = "john";
+  export_display_env = true;
+  
   mounts.dst."/home/john".src = "/home/john/work/perso/pentest/workspace";
   symlinks = lib.attrsets.recursiveUpdate {
     src."/home/john/.config/helix".dst = "/home/john/.config/helix";
@@ -70,12 +72,6 @@ in rec {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
     CMAKE="${pkgs.cmake}/bin/cmake";
     GLIBC_STATIC = "${pkgs.glibc.static}";
-
-    # Allow GUI applications to run
-    DISPLAY=":0";
-    WAYLAND_DISPLAY="wayland-0";
-    XDG_SESSION_TYPE="wayland";
-    XDG_RUNTIME_DIR="/run/user/$(id -u)/";
   };
 
   # Custom aliases / scripts that are set for this shell
