@@ -1,4 +1,7 @@
-{ pkgs, pkgs_unstable, colorstool, tmuxtool, ps1tool, inputs, system, ...}: let
+{ pkgs, colorstool, tmuxtool, ps1tool, inputs, system, ...}: let
+  old_pkgs = import inputs.nixpkgs-old {
+    inherit system;
+  };
   rust_pkgs = import inputs.nixpkgs-unstable {
     inherit system;
     overlays = [ inputs.rust-overlay.overlays.default ];
@@ -22,10 +25,16 @@
   languages_config = {
     nix.language-server.command = "${pkgs.nil}/bin/nil";
     python.language-server.command = "${pkgs.python310Packages.python-lsp-server}/bin/pylsp";
+    go = {
+      language-server = {
+        command = "${pkgs.gopls}/bin/gopls";
+        timeout = 60;
+      };
+    };
     rust = {
       language-server = {
         command = "${pkgs.rust-analyzer}/bin/rust-analyzer";
-        timeout = 60;
+        timeout = 20;
       };
       config = {
         cachePriming.enable = false;
@@ -60,7 +69,10 @@ in rec {
     dst = "/home/john/.config/helix";
     exceptions = [ "languages.toml" ];
   };
-  copies.dst."/home/john/.config/helix/languages.toml".src = helix_languages;
+  copies.dst."/home/john/.config/helix/languages.toml" = {
+    src = helix_languages;
+    replace_existing = true;
+  };
 
   colors = with colorstool; {
     primary = fromhex "#6978ff";
@@ -84,8 +96,11 @@ in rec {
       paramiko
       boto3
       tkinter
+      pyyaml
+      base58
     ]))
 
+    # TODO  Switch to rust 1.72.0 soon
     (rust_pkgs.rust-bin.nightly."2023-07-01".default.override {
       extensions = [ "rust-src" ];
     })
@@ -97,15 +112,38 @@ in rec {
     grpc-tools
     sshpass
     mold
+
+    go
+    go-task
+    gci
+    golangci-lint
+    go-swagger
+    gotools
+
+    nodePackages_latest.ts-node
   ];
 
   env_vars = {
     LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
     CMAKE="${pkgs.cmake}/bin/cmake";
+    CGO_LDFLAGS="-L ${pkgs.zlib}/lib";
     PROTOC_INCLUDE="${pkgs.protobuf}/include";
   };
 
-  shell.pkgconfig_libs = [ pkgs.glibc.dev ];
+  shell.pkgconfig_libs = [
+    pkgs.glibc.dev
+    pkgs.gtk3.dev
+    pkgs.webkitgtk.dev
+    pkgs.glib.dev
+    pkgs.pango.dev
+    pkgs.harfbuzz.dev
+    pkgs.cairo.dev
+    pkgs.gdk-pixbuf.dev
+    # old_pkgs.atk.dev
+    pkgs.libsoup.dev
+    pkgs.at-spi2-atk.dev
+    pkgs.zlib.dev
+  ];
 
   shell.scripts = with colorstool; {
     readnotes = ''

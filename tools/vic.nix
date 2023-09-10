@@ -73,6 +73,7 @@ in {
     inherit username root_mount_point fs_init;
     inherit export_display_env add_env_export;
     hostname = "${name}-shix";
+    restrict_resources = false;
 
     addpaths = (builtins.map ({src, dst, flags ? [], mount_type ? "auto"}: {
       inherit src dst;
@@ -91,9 +92,9 @@ in {
       type.symlink_dir_content.exceptions = exceptions;
     }) (prep_addpath addsymlink_dir_content))
 
-    ++ (builtins.map ({src, dst}: {
-      inherit src dst;
-      type = "copy";
+    ++ (builtins.map ({src, dst, replace_existing ? false}: {
+      inherit src dst replace_existing;
+      type.copy.replace_existing = replace_existing;
     }) (prep_addpath addcopies));
   };
 }

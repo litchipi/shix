@@ -24,7 +24,9 @@ impl Container {
     pub fn create(&mut self) -> Result<Pid, Errcode> {
         let env = generate_child_environment(&self.config)?;
         let pid = generate_child_process(self.config.clone(), env)?;
-        restrict_resources(&self.config.hostname, pid)?;
+        if self.config.restrict_resources {
+            restrict_resources(&self.config.hostname, pid)?;
+        }
         log::debug!("Creation finished");
         Ok(pid)
     }
@@ -46,8 +48,10 @@ impl Container {
             );
         }
 
-        if let Err(e) = clean_cgroups(&self.config.hostname) {
-            log::warn!("Cgroups cleaning failed: {}, skipping...", e);
+        if self.config.restrict_resources {
+            if let Err(e) = clean_cgroups(&self.config.hostname) {
+                log::warn!("Cgroups cleaning failed: {}, skipping...", e);
+            }
         }
 
         Ok(())

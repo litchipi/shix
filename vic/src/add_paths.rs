@@ -74,7 +74,9 @@ pub enum AddPathType {
     SymlinkDirContent {
         exceptions: Vec<PathBuf>,
     },
-    Copy,
+    Copy {
+        replace_existing: bool,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,8 +127,8 @@ impl AddPath {
                     create_symlink(&path, &dst)?;
                 }
             }
-            AddPathType::Copy => {
-                if !dst.exists() {
+            AddPathType::Copy { replace_existing } => {
+                if !dst.exists() || *replace_existing {
                     std::fs::copy(&self.src, &dst).unwrap();
                 } else {
                     log::info!("{dst:?} file exists, won't erase with a copy from host");

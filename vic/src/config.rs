@@ -15,6 +15,7 @@ pub struct ContainerOpts {
 
     pub export_display_env: bool,
     pub add_env_export: Vec<String>,
+    pub restrict_resources: bool,
 
     // Got from args
     #[serde(skip)]
