@@ -1,7 +1,7 @@
 { pkgs, colorstool, tmuxtool, ps1tool, inputs, system, ...}: let
-  old_pkgs = import inputs.nixpkgs-old {
-    inherit system;
-  };
+  # old_pkgs = import inputs.nixpkgs-old {
+  #   inherit system;
+  # };
   rust_pkgs = import inputs.nixpkgs-unstable {
     inherit system;
     overlays = [ inputs.rust-overlay.overlays.default ];
@@ -98,6 +98,7 @@ in rec {
       tkinter
       pyyaml
       base58
+      tomllib
     ]))
 
     # TODO  Switch to rust 1.72.0 soon
