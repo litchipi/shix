@@ -98,13 +98,13 @@ in rec {
       tkinter
       pyyaml
       base58
-      tomllib
     ]))
 
     # TODO  Switch to rust 1.72.0 soon
     (rust_pkgs.rust-bin.nightly."2023-07-01".default.override {
-      extensions = [ "rust-src" ];
+      extensions = [ "rust-src" "llvm-tools-preview" ];
     })
+    cargo-llvm-cov
 
     nodejs_20
     # nodejs-19_x
@@ -172,6 +172,10 @@ in rec {
       ];
     in ''
       npm update @${builtins.concatStringsSep " @" deps}
+    '';
+
+    test_coverage = ''
+      python3 ${../data/massa/llvm-cov.py} $@
     '';
   };
 
