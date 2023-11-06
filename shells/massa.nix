@@ -101,7 +101,7 @@ in rec {
     ]))
 
     # TODO  Switch to rust 1.72.0 soon
-    (rust_pkgs.rust-bin.nightly."2023-07-01".default.override {
+    (rust_pkgs.rust-bin."1.72.1".default.override {
       extensions = [ "rust-src" "llvm-tools-preview" ];
     })
     cargo-llvm-cov
