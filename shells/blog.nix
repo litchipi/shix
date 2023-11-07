@@ -77,6 +77,7 @@ in rec {
     (rust_pkgs.rust-bin.stable.latest.default.override {
       extensions = [ "rust-src" ];
     })
+    openssl.out
   ];
 
   env_vars = {
@@ -84,7 +85,10 @@ in rec {
     CMAKE="${pkgs.cmake}/bin/cmake";
   };
 
-  shell.pkgconfig_libs = [ pkgs.glibc.dev ];
+  shell.pkgconfig_libs = [
+    pkgs.glibc.dev
+    pkgs.openssl.dev
+  ];
 
   shell.scripts = with colorstool; {
   };
