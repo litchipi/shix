@@ -2,8 +2,20 @@
   # Name of the shell
   name = "ShixExample";
 
-  # Directory that will be mounted as $HOME
-  homeDir = "/tmp/temporary_home";
+  # Username to 
+  username = "john";
+
+  # Directory where everything will be saved
+  root_mount_point = "/tmp/shix/${name}_root";
+
+  # Do not mount /etc, but symlink all its content instead, except for /etc/hosts
+  mounts."/etc" = null;
+  symlink_dir_content."/etc" = {
+    dst = "/etc";
+    exceptions = [ "/etc/hosts" ];
+  };
+  copies."/etc/hosts".dst = "/etc/hosts";
+
 
   # The color palette that will be used for generated themes
   colors = {

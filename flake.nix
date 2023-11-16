@@ -4,8 +4,8 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs-old.url = "github:nixos/nixpkgs/nixos-22.05";
     flake-utils.url = "github:numtide/flake-utils";
-    helix.url = "github:helix-editor/helix";
 
     rust-overlay.url = "github:oxalica/rust-overlay";
   };
@@ -53,35 +53,54 @@
     shelltool = import ./tools/generate_shell.nix tools_args;
     bashtool = import ./tools/bash.nix tools_args;
     tmuxtool = import ./tools/tmux.nix tools_args;
+    victool = import ./tools/vic.nix tools_args;
     shellArgs = {
       inherit pkgs pkgs_unstable lib system inputs bashtool tmuxtool;
       colorstool = import ./tools/colors.nix tools_args;
       ps1tool = import ./tools/ps1.nix tools_args;
     };
 
-    bwrap_lib = import ./tools/bwrap.nix { inherit pkgs lib; };
     mkShell = file: let
       data = import file shellArgs;
       tmux_data = tmuxtool.build data;
-      bash_data = bashtool.build tmux_data.add_bashrc data;
-      start_cmd = shelltool.mkShell bash_data tmux_data data;
-      bwrap_args_list = bwrap_lib.get_args {
-        inherit bash_data tmux_data;
-      } data;
-      bwrap_args = builtins.concatStringsSep " " bwrap_args_list;
-    in pkgs.writeShellScript "${name_from_fname file}-shell" ''
-      if ! [ -d ${data.homeDir} ]; then
-        mkdir -p ${data.homeDir}
-      fi
-      ${pkgs.bubblewrap}/bin/bwrap ${bwrap_args} -- ${start_cmd}
+      bash_data = bashtool.build tmux_data data;
+      start_script = shelltool.mkShell bash_data tmux_data data;
+      vic_cfg = victool.mkConfig data;
+      vic_config_file = pkgs.writeText "vic-${data.name}-config.json" (builtins.toJSON vic_cfg);
+      is_release = true;
+    in pkgs.writeShellScript "${data.name}-shell" ''
+      cd ./vic
+      CONTAINER_UID=$(id -u)
+      CONTAINER_GID=$(id -g)
+      export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:${pkgs.libseccomp.dev}/lib/pkgconfig"
+      cargo build ${lib.strings.optionalString is_release "--release"}
+      echo "config file: ${vic_config_file}"
+
+      sudo -E ./target/${if is_release then "release" else "debug"}/vic \
+        --debug \
+        --config-file ${vic_config_file} \
+        --script ${start_script} \
+        --uid "$CONTAINER_UID" \
+        --gid "$CONTAINER_GID"
     '';
 
     shixbin = import ./shix_script.nix { inherit pkgs lib; };
+
+    vic_script = import ./vic/script.nix { inherit pkgs lib; };
   in {
-    apps = builtins.listToAttrs (builtins.map (f: {
+    packages.default = shixbin {
+      remoteRepoUrl = "REMOTE_REPO_URL";
+      pushAfterEditing = true;
+      pullBeforeEditing = true;
+      baseDir = "$HOME/BASE_DIR";
+      shellEditCommand = "SHELL_EDIT";
+    };
+    apps = (builtins.listToAttrs (builtins.map (f: {
       name = name_from_fname f;
       value = { type = "app"; program = "${mkShell f}"; };
-    }) all_shells);
+    }) all_shells)) // {
+      vic = { type = "app"; program = "${vic_script}"; };
+    };
 
     overlays.default = self: super: {
       lib = super.lib // {
@@ -122,6 +141,10 @@
         };
       };
       config.environment.systemPackages = [ (shixbin config.shix) ];
+    };
+
+    devShells.default = pkgs.mkShell {
+      PKG_CONFIG_PATH="${pkgs.libseccomp.dev}/lib/pkgconfig";
     };
   });
 }

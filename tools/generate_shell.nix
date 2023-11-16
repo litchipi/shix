@@ -3,8 +3,9 @@
   # secretstool = import ../tools/secrets.nix args;
 #in {
 {  
-  mkShell = { shell_bin, ...}: tmux: {
+  mkShell = { shell_bin, bashrc, ...}: tmux: {
     name,
+    username,
     colors,
     
     packages ? [],
@@ -12,6 +13,7 @@
     shellCommand ? null,
     initScript ? "",
     exitScript ? "",
+    env_vars ? {},
   ...}:
   let
     checklist = {
@@ -34,23 +36,39 @@
       else shell_cmd;
 
     shell_activate = pkgs.writeScript "${name}_shell_activate.sh" (''
+      #!${pkgs.bashInteractive}/bin/bash
       set -e
+
+      # Temporary variables set for the initialization script, will be overwritten by bashrc
+      export PATH="/run/wrappers/bin:/run/current-system/sw/bin"
+      export HOME="/home/${username}"
+      export TERM="xterm-256color"
 
       # Remove annoying messages from Ubuntu
       touch $HOME/.sudo_as_admin_successful
 
-      cat /host/home/$USER/.bashrc \
-        | sed "s/export PS1=/#export PS1=/g" \
-        | grep -v -e "source.*git-prompt.*" \
-        > $HOME/.bashrc
+      rm -f $HOME/.bashrc $HOME/.host_bashrc
+      cat /host/etc/profile | grep 'set-environment' >> $HOME/.host_bashrc
+      cat /host/etc/bashrc \
+        | sed 's/PS1=/: #PS1=/g' \
+        | sed 's+. /etc/profile+: #. /etc/profile+g' \
+        >> $HOME/.host_bashrc
+
+      cat << EOF > $HOME/.bashrc
+      if [ -n "\$__SANDBOXED_ETC_BASHRC_SOURCED" ]; then return; fi
+      __SANDBOXED_ETC_BASHRC_SOURCED=1
+      source $HOME/.host_bashrc
+      EOF
+      cat ${bashrc} >> $HOME/.bashrc
       
       ${initScript}
+      set +e
       ${shell_exec}
       ${exitScript}
       exit 0;
     '');
   in (if (builtins.deepSeq configcheck configcheck.ok)
-    then shell_activate
+    then builtins.trace "Activation script: ${shell_activate}" shell_activate
     else builtins.throw "Failed checks: ${builtins.concatStringsSep ", " configcheck.list}"
   );
 }
